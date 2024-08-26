@@ -1,0 +1,14 @@
+TECH STACK:
+Javascript Framework/Metaframework: React/NextJS 13
+Backend: Python/FastAPI
+Backend as a Service and Database: SupaBase (PostgreSQL)
+Object Relational Mapping (ORM) Library: Drizzle
+Ui Library: shadcn/ui
+
+Next and FastAPI Setup:
+https://vercel.com/new/vercel/templates/next.js/nextjs-fastapi-starter
+
+Drizzle and SupaBase Setup:
+https://orm.drizzle.team/learn/tutorials/drizzle-with-supabase
+
+        

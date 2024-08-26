@@ -1,8 +1,0 @@
-Javascript Framework/Metaframework: React/NextJS
-Backend as a Service: SupaBase (PostgreSQL)
-Object Relational Mapping (ORM) Library: Drizzle
-Ui Library: shadcn/ui
-
-
-Drizzle and SupaBase Setup:
-https://orm.drizzle.team/learn/tutorials/drizzle-with-supabase
