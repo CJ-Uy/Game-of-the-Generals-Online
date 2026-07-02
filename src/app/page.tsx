@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { CSSProperties } from "react";
+import { WarBoard } from "@/components/home/war-board";
 
 const ranks = [
 	["★★★★★", "5-Star General", "x 1"],
@@ -33,63 +33,6 @@ const playModes = [
 	["03", "Private Room", "Share a four-letter code and face a friend across any distance.", "Create a room"],
 ];
 
-const pieces = [
-	{ side: "gold", glyph: "★★★★★", col: 1, row: 5, dx: "42px", dy: "0px", delay: "0s" },
-	{ side: "gold", glyph: "✦", col: 2, row: 6, dx: "0px", dy: "-44px", delay: "-1.4s" },
-	{ side: "gold", glyph: "∧", col: 3, row: 5, dx: "40px", dy: "0px", delay: "-2.2s" },
-	{ side: "gold", glyph: "⚑", col: 4, row: 6, dx: "0px", dy: "-38px", delay: "-3s" },
-	{ side: "gold", glyph: "▲▲", col: 5, row: 5, dx: "-38px", dy: "0px", delay: "-4s" },
-	{ side: "gold", glyph: "◆", col: 6, row: 6, dx: "0px", dy: "-42px", delay: "-5s" },
-	{ side: "slate", glyph: "", col: 1, row: 1, dx: "0px", dy: "38px", delay: "-0.8s" },
-	{ side: "slate", glyph: "?", col: 2, row: 2, dx: "42px", dy: "0px", delay: "-1.8s" },
-	{ side: "slate", glyph: "", col: 4, row: 1, dx: "0px", dy: "40px", delay: "-2.8s" },
-	{ side: "slate", glyph: "", col: 6, row: 2, dx: "-38px", dy: "0px", delay: "-3.8s" },
-	{ side: "slate", glyph: "", col: 7, row: 1, dx: "0px", dy: "42px", delay: "-4.8s" },
-];
-
-function BoardPreview() {
-	return (
-		<div className="wr-board absolute left-1/2 top-1/2 w-[min(94vw,1100px)] [perspective:1700px]">
-			<div className="relative aspect-[9/8] rotate-x-[30deg]">
-				<div className="absolute inset-0 grid grid-cols-9 grid-rows-8 gap-[3px]">
-					{Array.from({ length: 72 }).map((_, index) => (
-						<div
-							key={index}
-							className="rounded-[4px] border border-[#1c2740]/80 bg-[#121b2c]/70 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.015)]"
-						/>
-					))}
-				</div>
-				{pieces.map((piece, index) => (
-					<div
-						key={`${piece.side}-${index}`}
-						className={`wr-piece absolute flex items-center justify-center rounded-[6px] border font-bold shadow-[0_10px_22px_rgba(0,0,0,0.5)] ${
-							piece.side === "gold"
-								? "border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/70"
-								: "border-[#2c3a55] bg-gradient-to-br from-[#253352] to-[#1a2338] text-[#c9a85d]/35"
-						}`}
-						style={{
-							left: `calc(${piece.col * (100 / 9)}% + 6px)`,
-							top: `calc(${piece.row * (100 / 8)}% + 6px)`,
-							width: `calc(${100 / 9}% - 12px)`,
-							height: `calc(${100 / 8}% - 12px)`,
-							fontSize: piece.glyph.length > 3 ? 12 : 18,
-							letterSpacing: 1,
-							animationDelay: piece.delay,
-							"--move-x": piece.dx,
-							"--move-y": piece.dy,
-						} as CSSProperties}
-					>
-						{piece.glyph}
-					</div>
-				))}
-				<div className="wr-arbiter absolute left-[39%] top-[35%] rounded-[4px] border border-[var(--accent)] bg-[#0e1420] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--accent)] shadow-[0_12px_34px_rgba(0,0,0,0.65)]">
-					Arbiter
-				</div>
-			</div>
-		</div>
-	);
-}
-
 export default function Home() {
 	return (
 		<main className="min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)]">
@@ -115,7 +58,7 @@ export default function Home() {
 			</header>
 
 			<section className="relative flex min-h-[calc(100dvh-60px)] items-center justify-center overflow-hidden border-b border-[#1c2740]">
-				<BoardPreview />
+				<WarBoard />
 				<div className="absolute inset-0 bg-[radial-gradient(ellipse_72%_64%_at_50%_50%,rgba(14,20,32,0)_32%,#0e1420_84%)]" />
 				<div className="absolute inset-0 bg-[radial-gradient(ellipse_56%_50%_at_50%_47%,rgba(14,20,32,0.78),rgba(14,20,32,0.46)_55%,rgba(14,20,32,0)_82%)]" />
 
@@ -154,10 +97,6 @@ export default function Home() {
 					</div>
 				</div>
 
-				<div className="absolute inset-x-0 bottom-0 z-10 flex flex-wrap justify-between gap-2 px-5 py-3 font-mono text-[9.5px] uppercase tracking-[0.22em] text-[#44506b] md:px-12">
-					<span>War no. 02 · Move 017 · Gold to move · Casualties 05</span>
-					<span>Click an enemy piece to log a suspicion</span>
-				</div>
 			</section>
 
 			<section id="briefing" className="mx-auto max-w-6xl px-5 py-20 md:px-12 md:py-28">

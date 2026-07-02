@@ -92,6 +92,10 @@ body {
 	animation: wr-arbiter-think 1.2s ease-in-out infinite;
 }
 
+.wr-arbiter-live {
+	animation: wr-arbiter-think 0.9s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*,
 	::before,
