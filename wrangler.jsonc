@@ -9,6 +9,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "game-of-the-generals-online",
+	"account_id": "8527ec1369d46f55304a6f59ab5356e4",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-07-02",
 	"compatibility_flags": [
@@ -30,6 +31,32 @@
 			// see https://opennext.js.org/cloudflare/caching
 			"binding": "WORKER_SELF_REFERENCE",
 			"service": "game-of-the-generals-online"
+		}
+	],
+	"routes": [
+		{
+			"pattern": "gogo.cjuy.dev",
+			"custom_domain": true
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "GOGO_DB",
+			"database_name": "gogo-db",
+			"database_id": "4929c8fd-3fdd-4839-9ae1-8f49bc2943e3",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "GOGO_CACHE",
+			"id": "863de6f15ba94b7ca873e916d8c4adc0"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "GOGO_ASSETS",
+			"bucket_name": "gogo-assets"
 		}
 	],
 	"observability": {

@@ -18,7 +18,7 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"drizzle-orm": "^0.45.2",
-		"next": "16.2.6",
+		"next": "15.5.18",
 		"react": "^19.1.7",
 		"react-dom": "^19.1.7",
 		"tailwind-merge": "^3.6.0"
@@ -31,7 +31,7 @@
 		"@types/react-dom": "^19.1.7",
 		"drizzle-kit": "^0.31.10",
 		"eslint": "^9",
-		"eslint-config-next": "16.2.6",
+		"eslint-config-next": "15.5.18",
 		"tailwindcss": "^4",
 		"typescript": "^5.7.4",
 		"wrangler": "^4.106.0"

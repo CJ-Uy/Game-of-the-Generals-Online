@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
@@ -39,13 +40,6 @@ const ranks = [
 	{ key: "FLG", glyph: "⚑", name: "Flag", count: 1 },
 ] as const;
 
-type Piece = {
-	uid: string;
-	key: string;
-	glyph: string;
-	name: string;
-};
-
 type Mode = "bot" | "room" | "join" | "local";
 
 function makeTray() {
@@ -66,11 +60,6 @@ function shuffle<T>(items: T[]) {
 		[next[i], next[j]] = [next[j], next[i]];
 	}
 	return next;
-}
-
-function randomCode() {
-	const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-	return `GG-${Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}`;
 }
 
 function glyphSize(glyph: string) {
@@ -119,13 +108,15 @@ function ShuffleIcon({ className }: { className?: string }) {
 }
 
 export function BoardSetup() {
+	const router = useRouter();
 	const tray = useMemo(makeTray, []);
 	const trayIds = useMemo(() => new Set(tray.map((piece) => piece.uid)), [tray]);
-	const [mode, setMode] = useState<Mode>("bot");
+	const [mode, setMode] = useState<Mode>("room");
 	const [difficulty, setDifficulty] = useState("Sergeant");
-	const [roomCode, setRoomCode] = useState("");
 	const [joinCode, setJoinCode] = useState("");
 	const [placement, setPlacement] = useState<Record<number, string>>({});
+	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState("");
 	const [selected, setSelected] = useState<string | null>(null);
 	const [showTutorial, setShowTutorial] = useState(false);
 	const [pickerZone, setPickerZone] = useState<number | null>(null);
@@ -133,6 +124,7 @@ export function BoardSetup() {
 	const placed = new Set(Object.values(placement));
 	const ready = placed.size === tray.length;
 	const reservePieces = tray.filter((piece) => !placed.has(piece.uid));
+	const canStart = ready && (mode === "room" || mode === "join") && !busy;
 
 	const animatePlacement = (update: () => void) => {
 		const startViewTransition = (document as Document & { startViewTransition?: (callback: () => void) => void }).startViewTransition;
@@ -211,6 +203,30 @@ export function BoardSetup() {
 	const pieceById = (uid?: string) => tray.find((piece) => piece.uid === uid);
 	const pickerPiece = pickerZone == null ? undefined : pieceById(placement[pickerZone]);
 
+	const startOnline = async () => {
+		if (!canStart) return;
+		setBusy(true);
+		setError("");
+
+		const path = mode === "room" ? "/api/rooms" : `/api/rooms/${joinCode}/join`;
+		try {
+			const response = await fetch(path, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ loadout: placement }),
+			});
+			const payload = (await response.json()) as { token?: string; room?: { code: string }; error?: string };
+			if (!response.ok || !payload.token || !payload.room) throw new Error(payload.error ?? "Could not start room.");
+
+			sessionStorage.setItem(`gog:room:${payload.room.code}:token`, payload.token);
+			router.push(`/play/${payload.room.code}`);
+		} catch (caught) {
+			setError(caught instanceof Error ? caught.message : "Could not start room.");
+		} finally {
+			setBusy(false);
+		}
+	};
+
 	useEffect(() => {
 		try {
 			const saved = localStorage.getItem(GUEST_LOADOUT_KEY);
@@ -261,8 +277,8 @@ export function BoardSetup() {
 							{[
 								["room", "Create lobby", "Generate a room code."],
 								["join", "Join lobby", "Enter a code from a friend."],
-								["local", "Pass & play", "Two commanders, one device."],
-								["bot", "Versus bot", "Pick a commander difficulty."],
+								["local", "Pass & play", "Coming after guest rooms."],
+								["bot", "Versus bot", "Coming after guest rooms."],
 							].map(([value, title, body]) => (
 								<button
 									key={value}
@@ -308,11 +324,9 @@ export function BoardSetup() {
 							{mode === "room" ? (
 								<div className="space-y-3">
 									<div className="rounded-[6px] border border-dashed border-[rgba(201,168,93,0.45)] p-4 text-center font-mono text-2xl font-semibold tracking-[0.2em] text-[var(--accent)]">
-										{roomCode || "GG-...."}
+										GG-....
 									</div>
-									<Button variant="outline" className="w-full" onClick={() => setRoomCode(randomCode())}>
-										Generate code
-									</Button>
+									<p className="text-sm leading-6 text-[#8a93a8]">A shareable code appears after you lock deployment.</p>
 								</div>
 							) : null}
 							{mode === "join" ? (
@@ -324,6 +338,7 @@ export function BoardSetup() {
 								/>
 							) : null}
 							{mode === "local" ? <p className="text-sm leading-6 text-[#8a93a8]">Commander 2 will deploy after Commander 1 locks this board.</p> : null}
+							{error ? <p className="text-sm leading-6 text-[#d98b73]">{error}</p> : null}
 						</div>
 					</Card>
 				</aside>
@@ -434,8 +449,8 @@ export function BoardSetup() {
 						<Button variant="outline" onClick={() => setPlacement({})}>
 							Clear board
 						</Button>
-						<Button className="ml-auto" disabled={!ready}>
-							{ready ? "Ready for battle" : "Place all 21 pieces"}
+						<Button className="ml-auto" disabled={!canStart} onClick={startOnline}>
+							{busy ? "Contacting HQ" : ready ? (mode === "join" ? "Join battle" : "Create room") : "Place all 21 pieces"}
 						</Button>
 					</div>
 				</section>
@@ -493,8 +508,8 @@ export function BoardSetup() {
 					<Button variant="outline" size="sm" className="shrink-0" onClick={() => setPlacement({})} aria-label="Clear board">
 						Clear
 					</Button>
-					<Button size="sm" className="flex-1" disabled={!ready}>
-						{ready ? "Ready for battle" : `${tray.length - placed.size} left`}
+					<Button size="sm" className="flex-1" disabled={!canStart} onClick={startOnline}>
+						{busy ? "..." : ready ? (mode === "join" ? "Join" : "Create") : `${tray.length - placed.size} left`}
 					</Button>
 				</div>
 			</div>

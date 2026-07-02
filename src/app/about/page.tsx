@@ -195,7 +195,7 @@ export default function AboutPage() {
 
 			{/* How it plays: asymmetric pillars. One tall feature, two stacked. */}
 			<section className="mx-auto max-w-6xl px-5 py-20 md:px-12 md:py-28">
-				<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">// How the war works</p>
+				<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">{"//"} How the war works</p>
 				<h2 className="mb-10 max-w-2xl font-display text-[clamp(32px,4.6vw,58px)] font-extrabold uppercase leading-none">
 					Three rules run the whole battle.
 				</h2>

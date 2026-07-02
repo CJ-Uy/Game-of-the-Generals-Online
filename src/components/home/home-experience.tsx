@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { WarBoard } from "@/components/home/war-board";
 
 const ranks = [
@@ -318,7 +318,7 @@ export function HomeExperience() {
 				<div className="mx-auto max-w-6xl px-5 py-20 md:px-12 md:py-28">
 					<div className="mb-9 flex flex-wrap items-end justify-between gap-4">
 						<div>
-							<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">// Chain of command</p>
+							<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">{"//"} Chain of command</p>
 							<h2 className="font-display text-[clamp(36px,5vw,64px)] font-extrabold uppercase leading-none">
 								Fifteen ranks. One traitor logic.
 							</h2>
