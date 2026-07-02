@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, type DragEvent } from "react";
+import { useMemo, useState, type CSSProperties, type DragEvent } from "react";
 import Link from "next/link";
+import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { TutorialModal } from "@/components/home/home-experience";
@@ -76,33 +77,58 @@ export function BoardSetup() {
 	const [placement, setPlacement] = useState<Record<number, string>>({});
 	const [selected, setSelected] = useState<string | null>(null);
 	const [showTutorial, setShowTutorial] = useState(false);
+	const [pickerZone, setPickerZone] = useState<number | null>(null);
 	const placed = new Set(Object.values(placement));
 	const ready = placed.size === tray.length;
+	const reservePieces = tray.filter((piece) => !placed.has(piece.uid));
+
+	const animatePlacement = (update: () => void) => {
+		const startViewTransition = (document as Document & { startViewTransition?: (callback: () => void) => void }).startViewTransition;
+		if (startViewTransition) startViewTransition.call(document, () => flushSync(update));
+		else update();
+	};
 
 	const placePiece = (zone: number, uid = selected) => {
 		if (!uid) {
 			if (placement[zone]) {
-				setPlacement((current) => {
-					const next = { ...current };
-					delete next[zone];
-					return next;
+				animatePlacement(() => {
+					setPlacement((current) => {
+						const next = { ...current };
+						delete next[zone];
+						return next;
+					});
 				});
 			}
 			return;
 		}
 
-		setPlacement((current) => {
-			const next = Object.fromEntries(Object.entries(current).filter(([, value]) => value !== uid)) as Record<number, string>;
-			next[zone] = uid;
-			return next;
+		animatePlacement(() => {
+			setPlacement((current) => {
+				const source = Object.entries(current).find(([, value]) => value === uid);
+				const sourceZone = source ? Number(source[0]) : null;
+				const targetUid = current[zone];
+				const next = { ...current };
+
+				if (sourceZone != null && sourceZone !== zone) {
+					if (targetUid) next[sourceZone] = targetUid;
+					else delete next[sourceZone];
+				}
+
+				next[zone] = uid;
+				return next;
+			});
 		});
 		setSelected(null);
+		setPickerZone(null);
 	};
 
 	const autoDeploy = () => {
 		const cells = shuffle(Array.from({ length: 27 }, (_, index) => index));
-		setPlacement(Object.fromEntries(shuffle(tray).map((piece, index) => [cells[index], piece.uid])));
+		animatePlacement(() => {
+			setPlacement(Object.fromEntries(shuffle(tray).map((piece, index) => [cells[index], piece.uid])));
+		});
 		setSelected(null);
+		setPickerZone(null);
 	};
 
 	const startDrag = (event: DragEvent, uid: string) => {
@@ -115,6 +141,7 @@ export function BoardSetup() {
 	};
 
 	const pieceById = (uid?: string) => tray.find((piece) => piece.uid === uid);
+	const pickerPiece = pickerZone == null ? undefined : pieceById(placement[pickerZone]);
 
 	return (
 		<main className="min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)]">
@@ -233,7 +260,11 @@ export function BoardSetup() {
 										key={index}
 										type="button"
 										disabled={!active}
-										onClick={() => active && placePiece(zone)}
+										onClick={() => {
+											if (!active) return;
+											setPickerZone(zone);
+											setSelected(null);
+										}}
 										onDragOver={(event) => active && event.preventDefault()}
 										onDrop={(event) => active && dropOnCell(event, zone)}
 										className={`aspect-square rounded-[4px] border transition-colors ${
@@ -250,6 +281,7 @@ export function BoardSetup() {
 											<span
 												draggable
 												onDragStart={(event) => startDrag(event, piece.uid)}
+												style={{ viewTransitionName: `piece-${piece.uid}` } as CSSProperties}
 												className={`mx-auto flex h-[74%] w-[82%] items-center justify-center rounded-[4px] border border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold text-[#0e1420]/75 ${glyphSize(piece.glyph)}`}
 											>
 												{piece.glyph}
@@ -277,25 +309,23 @@ export function BoardSetup() {
 				<aside className="order-3 space-y-4">
 					<Card className="p-5">
 						<CardTitle>Reserve</CardTitle>
-						<CardContent className="mt-3 p-0">Tap a piece, then tap a back-row square. Desktop can drag and drop.</CardContent>
+						<CardContent className="mt-3 p-0">Tap a square to choose a reserve piece. Drag placed pieces to move or swap.</CardContent>
 						<div className="mt-4 grid grid-cols-3 gap-2">
-							{tray
-								.filter((piece) => !placed.has(piece.uid))
-								.map((piece) => (
-									<button
-										key={piece.uid}
-										type="button"
-										draggable
-										onDragStart={(event) => startDrag(event, piece.uid)}
-										onClick={() => setSelected(selected === piece.uid ? null : piece.uid)}
-										className={`rounded-[5px] border p-2 transition-colors ${
-											selected === piece.uid ? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)]" : "border-[#2c3a55] bg-[#121b2c]"
-										}`}
-									>
-										<div className={`${glyphSize(piece.glyph)} font-bold leading-none text-[var(--accent)]`}>{piece.glyph}</div>
-										<div className="mt-1 truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8]">{piece.name}</div>
-									</button>
-								))}
+							{reservePieces.map((piece) => (
+								<button
+									key={piece.uid}
+									type="button"
+									draggable
+									onDragStart={(event) => startDrag(event, piece.uid)}
+									onClick={() => setSelected(selected === piece.uid ? null : piece.uid)}
+									className={`rounded-[5px] border p-2 transition-colors ${
+										selected === piece.uid ? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)]" : "border-[#2c3a55] bg-[#121b2c]"
+									}`}
+								>
+									<div className={`${glyphSize(piece.glyph)} font-bold leading-none text-[var(--accent)]`}>{piece.glyph}</div>
+									<div className="mt-1 truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8]">{piece.name}</div>
+								</button>
+							))}
 						</div>
 					</Card>
 
@@ -319,6 +349,52 @@ export function BoardSetup() {
 				</aside>
 			</section>
 			{showTutorial ? <TutorialModal onClose={() => setShowTutorial(false)} /> : null}
+			{pickerZone != null ? (
+				<div className="fixed inset-0 z-[70] flex items-end bg-[#05070c]/65 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4" onClick={() => setPickerZone(null)}>
+					<div
+						className="max-h-[78dvh] w-full overflow-auto rounded-t-[10px] border border-[#2c3a55] bg-[#0e1420] p-4 shadow-[0_-18px_80px_rgba(0,0,0,0.65)] sm:max-w-xl sm:rounded-[10px]"
+						onClick={(event) => event.stopPropagation()}
+					>
+						<div className="mb-4 flex items-center justify-between gap-3">
+							<div>
+								<div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">Place piece</div>
+								<div className="text-sm text-[#8a93a8]">
+									{pickerPiece ? `${pickerPiece.name} currently holds this square.` : "Choose a reserve piece for this square."}
+								</div>
+							</div>
+							<Button variant="ghost" size="sm" onClick={() => setPickerZone(null)}>
+								Close
+							</Button>
+						</div>
+
+						{pickerPiece ? (
+							<Button variant="outline" className="mb-4 w-full" onClick={() => placePiece(pickerZone, null)}>
+								Recall current piece
+							</Button>
+						) : null}
+
+						<div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+							{reservePieces.length ? (
+								reservePieces.map((piece) => (
+									<button
+										key={piece.uid}
+										type="button"
+										onClick={() => placePiece(pickerZone, piece.uid)}
+										className="rounded-[5px] border border-[#2c3a55] bg-[#121b2c] p-3 text-left transition-colors active:scale-[0.98] hover:border-[var(--accent)]"
+									>
+										<div className={`${glyphSize(piece.glyph)} font-bold leading-none text-[var(--accent)]`}>{piece.glyph}</div>
+										<div className="mt-2 truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8]">{piece.name}</div>
+									</button>
+								))
+							) : (
+								<div className="col-span-full rounded-[6px] border border-[#2c3a55] bg-[#0b101b] p-4 text-sm text-[#8a93a8]">
+									All pieces are deployed. Recall one from the board to change this square.
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
+			) : null}
 		</main>
 	);
 }
