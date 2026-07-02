@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { CSSProperties } from "react";
 
 const ranks = [
 	["★★★★★", "5-Star General", "x 1"],
@@ -33,22 +34,22 @@ const playModes = [
 ];
 
 const pieces = [
-	["gold", "★★★★★", 1, 5],
-	["gold", "✦", 2, 6],
-	["gold", "∧", 3, 5],
-	["gold", "⚑", 4, 6],
-	["gold", "▲▲", 5, 5],
-	["gold", "◆", 6, 6],
-	["slate", "", 1, 1],
-	["slate", "?", 2, 2],
-	["slate", "", 4, 1],
-	["slate", "", 6, 2],
-	["slate", "", 7, 1],
+	{ side: "gold", glyph: "★★★★★", col: 1, row: 5, dx: "42px", dy: "0px", delay: "0s" },
+	{ side: "gold", glyph: "✦", col: 2, row: 6, dx: "0px", dy: "-44px", delay: "-1.4s" },
+	{ side: "gold", glyph: "∧", col: 3, row: 5, dx: "40px", dy: "0px", delay: "-2.2s" },
+	{ side: "gold", glyph: "⚑", col: 4, row: 6, dx: "0px", dy: "-38px", delay: "-3s" },
+	{ side: "gold", glyph: "▲▲", col: 5, row: 5, dx: "-38px", dy: "0px", delay: "-4s" },
+	{ side: "gold", glyph: "◆", col: 6, row: 6, dx: "0px", dy: "-42px", delay: "-5s" },
+	{ side: "slate", glyph: "", col: 1, row: 1, dx: "0px", dy: "38px", delay: "-0.8s" },
+	{ side: "slate", glyph: "?", col: 2, row: 2, dx: "42px", dy: "0px", delay: "-1.8s" },
+	{ side: "slate", glyph: "", col: 4, row: 1, dx: "0px", dy: "40px", delay: "-2.8s" },
+	{ side: "slate", glyph: "", col: 6, row: 2, dx: "-38px", dy: "0px", delay: "-3.8s" },
+	{ side: "slate", glyph: "", col: 7, row: 1, dx: "0px", dy: "42px", delay: "-4.8s" },
 ];
 
 function BoardPreview() {
 	return (
-		<div className="absolute left-1/2 top-1/2 w-[min(94vw,1100px)] -translate-x-1/2 -translate-y-[52%] rotate-[-5deg] [perspective:1700px]">
+		<div className="wr-board absolute left-1/2 top-1/2 w-[min(94vw,1100px)] [perspective:1700px]">
 			<div className="relative aspect-[9/8] rotate-x-[30deg]">
 				<div className="absolute inset-0 grid grid-cols-9 grid-rows-8 gap-[3px]">
 					{Array.from({ length: 72 }).map((_, index) => (
@@ -58,27 +59,30 @@ function BoardPreview() {
 						/>
 					))}
 				</div>
-				{pieces.map(([side, glyph, col, row], index) => (
+				{pieces.map((piece, index) => (
 					<div
-						key={`${side}-${index}`}
-						className={`absolute flex items-center justify-center rounded-[6px] border font-bold shadow-[0_10px_22px_rgba(0,0,0,0.5)] ${
-							side === "gold"
+						key={`${piece.side}-${index}`}
+						className={`wr-piece absolute flex items-center justify-center rounded-[6px] border font-bold shadow-[0_10px_22px_rgba(0,0,0,0.5)] ${
+							piece.side === "gold"
 								? "border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/70"
 								: "border-[#2c3a55] bg-gradient-to-br from-[#253352] to-[#1a2338] text-[#c9a85d]/35"
 						}`}
 						style={{
-							left: `calc(${Number(col) * (100 / 9)}% + 6px)`,
-							top: `calc(${Number(row) * (100 / 8)}% + 6px)`,
+							left: `calc(${piece.col * (100 / 9)}% + 6px)`,
+							top: `calc(${piece.row * (100 / 8)}% + 6px)`,
 							width: `calc(${100 / 9}% - 12px)`,
 							height: `calc(${100 / 8}% - 12px)`,
-							fontSize: String(glyph).length > 3 ? 12 : 18,
+							fontSize: piece.glyph.length > 3 ? 12 : 18,
 							letterSpacing: 1,
-						}}
+							animationDelay: piece.delay,
+							"--move-x": piece.dx,
+							"--move-y": piece.dy,
+						} as CSSProperties}
 					>
-						{glyph}
+						{piece.glyph}
 					</div>
 				))}
-				<div className="absolute left-[39%] top-[35%] rounded-[4px] border border-[var(--accent)] bg-[#0e1420] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--accent)] shadow-[0_12px_34px_rgba(0,0,0,0.65)]">
+				<div className="wr-arbiter absolute left-[39%] top-[35%] rounded-[4px] border border-[var(--accent)] bg-[#0e1420] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--accent)] shadow-[0_12px_34px_rgba(0,0,0,0.65)]">
 					Arbiter
 				</div>
 			</div>

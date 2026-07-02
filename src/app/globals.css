@@ -47,6 +47,51 @@ body {
 	}
 }
 
+@keyframes wr-board-drift {
+	0%,
+	100% {
+		transform: translate(-50%, -52%) rotate(-5deg);
+	}
+	50% {
+		transform: translate(-49%, -53%) rotate(-4.4deg);
+	}
+}
+
+@keyframes wr-piece-move {
+	0%,
+	100% {
+		transform: translate(0, 0);
+	}
+	35% {
+		transform: translate(var(--move-x, 0), var(--move-y, 0));
+	}
+	70% {
+		transform: translate(calc(var(--move-x, 0) * 0.25), calc(var(--move-y, 0) * -0.35));
+	}
+}
+
+@keyframes wr-arbiter-think {
+	0%,
+	100% {
+		opacity: 0.4;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+.wr-board {
+	animation: wr-board-drift 14s ease-in-out infinite;
+}
+
+.wr-piece {
+	animation: wr-piece-move 8s ease-in-out infinite;
+}
+
+.wr-arbiter {
+	animation: wr-arbiter-think 1.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*,
 	::before,

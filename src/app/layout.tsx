@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Big_Shoulders, Geist, Geist_Mono, IBM_Plex_Mono, Karla } from "next/font/google";
+import { Geist, Geist_Mono, IBM_Plex_Mono, Karla, Teko } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
 	subsets: ["latin"],
 });
 
-const bigShoulders = Big_Shoulders({
+const teko = Teko({
 	variable: "--font-display",
 	subsets: ["latin"],
 });
@@ -44,7 +44,7 @@ export default function RootLayout({
 				<link rel="icon" href="/favicon.svg" type="image/svg+xml"></link>
 			</head>
 			<body
-				className={`${geistSans.variable} ${geistMono.variable} ${bigShoulders.variable} ${plexMono.variable} ${karla.variable} antialiased`}
+				className={`${geistSans.variable} ${geistMono.variable} ${teko.variable} ${plexMono.variable} ${karla.variable} antialiased`}
 			>
 				{children}
 			</body>
