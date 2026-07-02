@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,13 +23,6 @@ const ranks = [
 	["∧", "Private", "x 6"],
 	["✦", "Spy", "x 2"],
 	["⚑", "Flag", "x 1"],
-];
-
-const rules = [
-	["01", "Deploy in secret", "Place your 21 pieces on your three back rows. Your opponent never sees their ranks."],
-	["02", "Move one square", "On your turn, move one piece orthogonally. Challenge by moving onto an enemy square."],
-	["03", "Trust the arbiter", "The arbiter resolves hidden ranks. You only learn which piece survived."],
-	["04", "Win by flag", "Capture the enemy Flag, or move your own Flag to the far edge."],
 ];
 
 const playModes = [
@@ -71,26 +65,169 @@ function Modal({
 }
 
 function TutorialModal({ onClose }: { onClose: () => void }) {
+	const [step, setStep] = useState(0);
+	const steps = [
+		{
+			title: "Deploy in secret",
+			body: "Each side fields 21 pieces across 15 ranks. Place them anywhere on your three back rows. Your opponent sees only the backs of your pieces, and you see only theirs.",
+			visual: <SetupRows />,
+		},
+		{
+			title: "One square at a time",
+			body: "Every piece moves exactly one square forward, backward, or sideways. No jumps, no charges, no diagonals. Turns strictly alternate.",
+			visual: <MoveDiagram />,
+		},
+		{
+			title: "Judged in silence",
+			body: "Move onto an occupied enemy square to challenge it. The arbiter compares hidden ranks and removes the loser. Equal ranks both fall.",
+			visual: <ArbiterDiagram />,
+		},
+		{
+			title: "The food chain has traps",
+			body: "Higher rank wins most battles. The Spy kills every officer, but the Private is the only piece that can kill a Spy.",
+			visual: <RankTrapDiagram />,
+		},
+		{
+			title: "It all ends with the flag",
+			body: "Capture the enemy Flag, or move your own Flag to the far edge. The Flag beats only the other Flag, so guard it with lies.",
+			visual: <FlagDiagram />,
+		},
+	];
+	const current = steps[step];
+
 	return (
-		<Modal title="How To Play" onClose={onClose}>
-			<div className="grid gap-3 md:grid-cols-2">
-				{rules.map(([num, title, body]) => (
-					<Card key={num} className="p-5">
-						<CardHeader>
-							<div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">Rule {num}</div>
-							<CardTitle>{title}</CardTitle>
-						</CardHeader>
-						<CardContent className="mt-3">{body}</CardContent>
-					</Card>
-				))}
+		<Modal title="Field Manual" onClose={onClose}>
+			<div className="mb-5 font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--accent)]">
+				Field manual · {String(step + 1).padStart(2, "0")} / 05
 			</div>
-			<div className="mt-5 flex flex-wrap gap-2">
-				<Badge>Spy beats officers</Badge>
-				<Badge>Private beats spy</Badge>
-				<Badge>Equal ranks both fall</Badge>
-				<Badge>Flag beats only flag</Badge>
+			<div className="rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-5">{current.visual}</div>
+			<h3 className="mt-5 font-display text-3xl font-bold uppercase text-[#ede8da]">{current.title}</h3>
+			<p className="mt-3 text-sm leading-7 text-[#aeb5c4]">{current.body}</p>
+			<div className="mt-6 flex items-center justify-between gap-3 border-t border-[#1c2740] pt-5">
+				<Button variant="outline" size="sm" disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))}>
+					Back
+				</Button>
+				<div className="flex gap-2">
+					{steps.map((item, index) => (
+						<span
+							key={item.title}
+							className={`h-2 rounded-full transition-all ${index === step ? "w-6 bg-[var(--accent)]" : "w-2 bg-[#2c3a55]"}`}
+						/>
+					))}
+				</div>
+				<Button
+					size="sm"
+					onClick={() => {
+						if (step === steps.length - 1) onClose();
+						else setStep((value) => value + 1);
+					}}
+				>
+					{step === steps.length - 1 ? "To the front" : "Next"}
+				</Button>
 			</div>
 		</Modal>
+	);
+}
+
+function SetupRows() {
+	return (
+		<div className="flex flex-col items-center gap-4">
+			<div className="grid grid-cols-9 gap-1">
+				{Array.from({ length: 27 }).map((_, index) => (
+					<div
+						key={index}
+						className={`h-7 w-7 rounded-[4px] border ${
+							[2, 7, 11, 15, 21, 25].includes(index)
+								? "border-[#2c3a55] bg-[#121b2c]"
+								: "border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a]"
+						}`}
+					/>
+				))}
+			</div>
+			<div className="text-center font-mono text-[9px] uppercase tracking-[0.2em] text-[#5b647a]">
+				Your three back rows · arrange them any way you like
+			</div>
+		</div>
+	);
+}
+
+function MoveDiagram() {
+	return (
+		<div className="mx-auto grid w-max grid-cols-3 gap-1">
+			{["", "↑", "", "←", "∧∧∧", "→", "", "↓", ""].map((label, index) => (
+				<div
+					key={index}
+					className={`flex h-12 w-12 items-center justify-center rounded-[4px] border ${
+						label === "∧∧∧"
+							? "border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75"
+							: label
+								? "border-[rgba(201,168,93,0.55)] bg-[rgba(201,168,93,0.14)] text-[var(--accent)]"
+								: "border-[#1c2740] bg-[#121b2c]"
+					}`}
+				>
+					{label}
+				</div>
+			))}
+		</div>
+	);
+}
+
+function ArbiterDiagram() {
+	return (
+		<div className="flex flex-col items-center gap-3">
+			<div className="wr-arbiter-live rounded-[4px] border border-[var(--accent)] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--accent)]">
+				Arbiter
+			</div>
+			<div className="relative h-20 w-20">
+				<div className="absolute inset-0 rounded-[6px] border border-[#2c3a55] bg-gradient-to-br from-[#253352] to-[#1a2338]" />
+				<div className="absolute inset-0 flex -translate-x-3 -translate-y-4 -rotate-3 items-center justify-center rounded-[6px] border border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold text-[#0e1420]/75 shadow-[0_14px_30px_rgba(0,0,0,0.5)]">
+					▲▲
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function RankTrapDiagram() {
+	return (
+		<div className="grid gap-3">
+			{[
+				["✦", "kills", "★★★★★", "every officer"],
+				["∧", "kills", "✦", "only the private"],
+			].map(([left, verb, right, label]) => (
+				<div key={label} className="flex items-center justify-center gap-3">
+					<div className="flex h-12 w-12 items-center justify-center rounded-[6px] border border-[#dabb74] bg-[#c9a85d] font-bold text-[#0e1420]/75">
+						{left}
+					</div>
+					<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#8a93a8]">{verb}</span>
+					<div className="flex h-12 w-12 items-center justify-center rounded-[6px] border border-[#2c3a55] bg-[#1a2338] text-[10px] font-bold text-[var(--accent)]">
+						{right}
+					</div>
+					<span className="hidden font-mono text-[10px] uppercase text-[#5b647a] sm:inline">{label}</span>
+				</div>
+			))}
+		</div>
+	);
+}
+
+function FlagDiagram() {
+	return (
+		<div className="flex items-center justify-center gap-1">
+			{["⚑", "→", "→", "→", "⚑"].map((label, index) => (
+				<div
+					key={index}
+					className={`flex h-11 w-11 items-center justify-center rounded-[5px] border ${
+						index === 0
+							? "border-[#dabb74] bg-[#c9a85d] text-[#0e1420]/75"
+							: index === 4
+								? "border-dashed border-[var(--accent)] bg-[rgba(201,168,93,0.1)] text-[var(--accent)]"
+								: "border-[#2c3a55] bg-[#121b2c] text-[#44506b]"
+					}`}
+				>
+					{label}
+				</div>
+			))}
+		</div>
 	);
 }
 
@@ -115,66 +252,8 @@ function ShopModal({ onClose }: { onClose: () => void }) {
 	);
 }
 
-function SetupModal({ onClose }: { onClose: () => void }) {
-	const [mode, setMode] = useState(playModes[0][0]);
-
-	return (
-		<Modal title="Set Up Your Board" onClose={onClose}>
-			<div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-				<div>
-					<div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[#8a93a8]">Select mode</div>
-					<div className="grid gap-2">
-						{playModes.map(([title, body, tag]) => (
-							<button
-								key={title}
-								type="button"
-								onClick={() => setMode(title)}
-								className={`rounded-[6px] border p-4 text-left transition-colors ${
-									mode === title ? "border-[var(--accent)] bg-[#161f31]" : "border-[#2c3a55] bg-[#0b101b]"
-								}`}
-							>
-								<div className="flex items-center justify-between gap-3">
-									<div className="font-display text-2xl font-bold uppercase">{title}</div>
-									<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--accent)]">{tag}</span>
-								</div>
-								<p className="mt-1 text-sm leading-6 text-[#aeb5c4]">{body}</p>
-							</button>
-						))}
-					</div>
-					<Button className="mt-5 h-14 w-full text-sm" onClick={onClose}>
-						Play {mode}
-					</Button>
-				</div>
-
-				<div>
-					<div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[#8a93a8]">Formation preview</div>
-					<div className="grid grid-cols-9 gap-1 rounded-[6px] border border-[#2c3a55] bg-[#0b101b] p-2">
-						{Array.from({ length: 27 }).map((_, index) => (
-							<div
-								key={index}
-								className={`aspect-square rounded-[3px] border ${
-									index % 5 === 0
-										? "border-[var(--accent)] bg-gradient-to-br from-[#c9a85d] to-[#a8894a]"
-										: "border-[#2c3a55] bg-[#121b2c]"
-								}`}
-							/>
-						))}
-					</div>
-					<div className="mt-4 grid grid-cols-5 gap-2">
-						{["★★★★★", "✦", "∧", "⚑", "◆◆"].map((glyph) => (
-							<div key={glyph} className="flex h-11 items-center justify-center rounded-[4px] border border-[#dabb74] bg-[#c9a85d] text-sm font-bold text-[#0e1420]/75">
-								{glyph}
-							</div>
-						))}
-					</div>
-				</div>
-			</div>
-		</Modal>
-	);
-}
-
 export function HomeExperience() {
-	const [modal, setModal] = useState<"tutorial" | "shop" | "setup" | null>(null);
+	const [modal, setModal] = useState<"tutorial" | "shop" | null>(null);
 
 	return (
 		<main className="min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)]">
@@ -193,8 +272,8 @@ export function HomeExperience() {
 					<Button variant="outline" size="sm" className="hidden sm:inline-flex">
 						Sign in
 					</Button>
-					<Button size="sm" onClick={() => setModal("setup")}>
-						Play
+					<Button size="sm" asChild>
+						<Link href="/play">Play</Link>
 					</Button>
 				</nav>
 			</header>
@@ -220,8 +299,8 @@ export function HomeExperience() {
 						Chess with a poker face. May the best liar win.
 					</p>
 					<div className="flex flex-wrap justify-center gap-3">
-						<Button size="lg" onClick={() => setModal("setup")}>
-							Deploy as guest
+						<Button size="lg" asChild>
+							<Link href="/play">Deploy as guest</Link>
 						</Button>
 						<Button variant="outline" size="lg" onClick={() => setModal("tutorial")}>
 							Tutorial
@@ -270,9 +349,9 @@ export function HomeExperience() {
 							<div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[#5b647a]">{tag}</div>
 							<CardTitle>{title}</CardTitle>
 							<CardContent className="mt-3">{body}</CardContent>
-							<button className="mt-auto pt-6 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--accent)]" onClick={() => setModal("setup")}>
+							<Link className="mt-auto pt-6 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--accent)]" href="/play">
 								Set up board
-							</button>
+							</Link>
 						</Card>
 					))}
 				</div>
@@ -286,8 +365,8 @@ export function HomeExperience() {
 						<span className="text-[var(--accent)]">General.</span>
 					</h2>
 					<div className="flex flex-col gap-3">
-						<Button size="lg" onClick={() => setModal("setup")}>
-							Deploy as guest. It&apos;s free
+						<Button size="lg" asChild>
+							<Link href="/play">Deploy as guest. It&apos;s free</Link>
 						</Button>
 						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#5b647a]">No account · No download · 10 minutes a match</p>
 					</div>
@@ -296,7 +375,6 @@ export function HomeExperience() {
 
 			{modal === "tutorial" ? <TutorialModal onClose={() => setModal(null)} /> : null}
 			{modal === "shop" ? <ShopModal onClose={() => setModal(null)} /> : null}
-			{modal === "setup" ? <SetupModal onClose={() => setModal(null)} /> : null}
 		</main>
 	);
 }
