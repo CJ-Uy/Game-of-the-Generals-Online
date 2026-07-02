@@ -64,6 +64,13 @@ export type PublicRoom = {
 	state: Omit<RoomState, "pieces"> & { pieces: PublicPiece[] };
 };
 
+export type LegalMove = {
+	pieceId: number;
+	col: number;
+	row: number;
+	target?: GamePiece;
+};
+
 const rankSet = new Set(ranks.map((rank) => rank.key));
 const army = ranks.flatMap((rank) => Array.from({ length: rank.count }, () => rank.key));
 const rankNumbers: Partial<Record<RankKey, number>> = {
@@ -81,6 +88,20 @@ const rankNumbers: Partial<Record<RankKey, number>> = {
 	SGT: 4,
 	PVT: 3,
 };
+
+export function makeRandomLoadout(): Record<number, string> {
+	const cells = Array.from({ length: 27 }, (_, index) => index);
+	const pieces = army.map((rank, index) => `${rank}-${index}`);
+	for (let i = cells.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[cells[i], cells[j]] = [cells[j], cells[i]];
+	}
+	for (let i = pieces.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+	}
+	return Object.fromEntries(pieces.map((piece, index) => [cells[index], piece]));
+}
 
 export function sideFromToken(hostToken: string, guestToken: string | null, token: string): PlayerSide | null {
 	if (token === hostToken) return "gold";
@@ -199,6 +220,53 @@ export function applyMove(state: RoomState, side: PlayerSide, pieceId: number, c
 	return outcome ? addMessage({ ...next, outcome }, "sys", outcome.note) : next;
 }
 
+export function legalMoves(state: RoomState, side: PlayerSide): LegalMove[] {
+	const moves: LegalMove[] = [];
+	for (const piece of state.pieces) {
+		if (!piece.alive || piece.owner !== side) continue;
+		for (const [dc, dr] of [
+			[0, 1],
+			[1, 0],
+			[-1, 0],
+			[0, -1],
+		]) {
+			const col = piece.col + dc;
+			const row = piece.row + dr;
+			if (col < 0 || col >= COLS || row < 0 || row >= ROWS) continue;
+			const target = state.pieces.find((item) => item.alive && item.col === col && item.row === row);
+			if (target?.owner === side) continue;
+			moves.push({ pieceId: piece.id, col, row, target });
+		}
+	}
+	return moves;
+}
+
+export function chooseBotMove(state: RoomState, side: PlayerSide, difficulty: string): LegalMove | null {
+	const moves = legalMoves(state, side);
+	if (!moves.length) return null;
+	if (difficulty === "Private" || difficulty === "Spy") return sample(moves);
+
+	const scored = moves.map((move) => {
+		const piece = state.pieces.find((item) => item.id === move.pieceId);
+		let score = Math.random();
+		if (move.target && piece) {
+			const losers = battleLosers(piece.rank, move.target.rank);
+			score += losers.includes("def") ? 8 : 0;
+			score -= losers.includes("att") ? 6 : 0;
+			if (move.target.rank === "FLG") score += 100;
+		}
+		if (piece?.rank === "FLG") score += side === "slate" ? move.row * 0.6 : (ROWS - 1 - move.row) * 0.6;
+		if (difficulty === "Sergeant") score += move.target ? 4 : 0;
+		if (difficulty === "Captain") score += piece?.rank === "PVT" ? 1.5 : 0;
+		if (difficulty === "Colonel" || difficulty === "General") score += centerScore(move.col);
+		if (difficulty === "General" && piece?.rank === "SPY" && move.target) score += 3;
+		return { move, score };
+	});
+
+	scored.sort((a, b) => b.score - a.score);
+	return difficulty === "Sergeant" ? sample(scored.slice(0, Math.min(6, scored.length))).move : scored[0].move;
+}
+
 export function resign(state: RoomState, side: PlayerSide): RoomState {
 	const winner = side === "gold" ? "slate" : "gold";
 	return addMessage({ ...state, outcome: { winner, note: `${label(side)} surrendered.` } }, "sys", `${label(side)} surrendered.`);
@@ -233,4 +301,12 @@ function getOutcome(pieces: GamePiece[]): Outcome | null {
 
 function label(side: PlayerSide) {
 	return side === "gold" ? "Gold" : "Slate";
+}
+
+function sample<T>(items: T[]) {
+	return items[Math.floor(Math.random() * items.length)];
+}
+
+function centerScore(col: number) {
+	return 4 - Math.abs(4 - col);
 }

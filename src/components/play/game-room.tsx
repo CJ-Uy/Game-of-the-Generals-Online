@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { LocalGameRoom } from "@/components/play/local-game-room";
 import { COLS, ROWS, ranks, square, type PublicPiece, type PublicRoom, type RankKey, type RoomMessage } from "@/lib/game";
 
 const rankByKey = new Map(ranks.map((rank) => [rank.key, rank]));
@@ -127,6 +128,11 @@ function ChatPanel({
 }
 
 export function GameRoom({ gameId }: { gameId: string }) {
+	if (gameId === "local" || gameId === "bot") return <LocalGameRoom mode={gameId} />;
+	return <OnlineGameRoom gameId={gameId} />;
+}
+
+function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const code = gameId.toUpperCase();
 	const [token, setToken] = useState("");
 	const [room, setRoom] = useState<PublicRoom | null>(null);
@@ -137,6 +143,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
 	const [draft, setDraft] = useState("");
 	const [chatOpen, setChatOpen] = useState(false);
 	const [busy, setBusy] = useState(false);
+	const [live, setLive] = useState(false);
 
 	useEffect(() => {
 		setToken(sessionStorage.getItem(`gog:room:${code}:token`) ?? "");
@@ -156,9 +163,40 @@ export function GameRoom({ gameId }: { gameId: string }) {
 
 	useEffect(() => {
 		void load();
-		const timer = window.setInterval(() => void load(), 1400);
+		const timer = window.setInterval(() => void load(), live ? 10000 : 1400);
 		return () => window.clearInterval(timer);
-	}, [load]);
+	}, [load, live]);
+
+	useEffect(() => {
+		if (!token || window.location.hostname !== "gogo.cjuy.dev") return;
+		let socket: WebSocket | null = null;
+		let reconnect = 0;
+		let closed = false;
+
+		const connect = () => {
+			const url = new URL(`/rooms/${encodeURIComponent(code)}`, "https://sync.gogo.cjuy.dev");
+			url.protocol = window.location.protocol === "http:" ? "ws:" : "wss:";
+			url.searchParams.set("token", token);
+			socket = new WebSocket(url);
+			socket.onopen = () => setLive(true);
+			socket.onmessage = (event) => {
+				if (event.data !== "pong") void load();
+			};
+			socket.onclose = () => {
+				setLive(false);
+				if (!closed) reconnect = window.setTimeout(connect, 1800);
+			};
+			socket.onerror = () => socket?.close();
+		};
+
+		connect();
+		return () => {
+			closed = true;
+			setLive(false);
+			window.clearTimeout(reconnect);
+			socket?.close();
+		};
+	}, [code, load, token]);
 
 	const act = async (body: Record<string, unknown>) => {
 		if (!token || busy) return;
@@ -297,7 +335,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
 				</div>
 			</header>
 
-			<section className="mx-auto grid max-w-[1280px] gap-5 px-4 pb-28 pt-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-6 lg:pb-10">
+			<section className="mx-auto grid max-w-[1280px] gap-5 px-4 pb-28 pt-5 lg:px-6 lg:pb-10 xl:grid-cols-[minmax(0,1fr)_340px]">
 				<div className="mx-auto w-full max-w-[760px] min-w-0">
 					<div className="mb-3 flex flex-wrap items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.2em]">
 						<span className={`flex items-center gap-2 ${myTurn ? "text-[#8fae6e]" : "text-[#8a93a8]"}`}>
@@ -305,7 +343,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
 							{statusText}
 						</span>
 						<span className="text-[#5b647a]">
-							{room?.side === "gold" ? "Gold" : "Slate"} · Fallen {myFallen.length} · Taken {foeFallen.length}
+							{live ? "Live" : "Sync"} · {room?.side === "gold" ? "Gold" : "Slate"} · Fallen {myFallen.length} · Taken {foeFallen.length}
 						</span>
 					</div>
 					{error ? <div className="mb-3 rounded-[5px] border border-[#7c3f36] bg-[#2b1716] px-3 py-2 text-sm text-[#d98b73]">{error}</div> : null}
@@ -394,7 +432,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
 					</Card>
 				</div>
 
-				<aside className="hidden lg:block">
+				<aside className="hidden xl:block">
 					<div className="sticky top-[76px] space-y-4">
 						<Card className="p-4">
 							<div className="flex items-baseline justify-between gap-2">
@@ -421,7 +459,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
 				</aside>
 			</section>
 
-			<div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#1c2740] bg-[#0e1420]/95 px-4 py-3 backdrop-blur lg:hidden">
+			<div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#1c2740] bg-[#0e1420]/95 px-4 py-3 backdrop-blur xl:hidden">
 				<div className="mx-auto flex max-w-[1280px] items-center gap-3">
 					<div className="min-w-0 flex-1 font-mono text-[11px] uppercase leading-tight tracking-[0.14em] text-[#8fae6e]">
 						{statusText}
@@ -436,7 +474,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
 			</div>
 
 			{chatOpen ? (
-				<div className="fixed inset-0 z-[70] flex items-end bg-[#05070c]/65 backdrop-blur-sm lg:hidden" onClick={() => setChatOpen(false)}>
+				<div className="fixed inset-0 z-[70] flex items-end bg-[#05070c]/65 backdrop-blur-sm xl:hidden" onClick={() => setChatOpen(false)}>
 					<div
 						className="flex max-h-[75dvh] min-h-[55dvh] w-full flex-col rounded-t-[10px] border border-[#2c3a55] bg-[#0e1420] p-4 shadow-[0_-18px_80px_rgba(0,0,0,0.65)]"
 						onClick={(event) => event.stopPropagation()}

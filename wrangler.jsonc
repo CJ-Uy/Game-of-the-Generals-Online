@@ -31,6 +31,10 @@
 			// see https://opennext.js.org/cloudflare/caching
 			"binding": "WORKER_SELF_REFERENCE",
 			"service": "game-of-the-generals-online"
+		},
+		{
+			"binding": "ROOM_SYNC",
+			"service": "gogo-room-sync"
 		}
 	],
 	"routes": [

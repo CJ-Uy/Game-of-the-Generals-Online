@@ -7,6 +7,7 @@ import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { TutorialModal } from "@/components/home/home-experience";
+import { BOT_MATCH_KEY, LOCAL_MATCH_KEY } from "@/components/play/local-game-room";
 
 const COLS = 9;
 const ROWS = 3;
@@ -113,6 +114,7 @@ export function BoardSetup() {
 	const trayIds = useMemo(() => new Set(tray.map((piece) => piece.uid)), [tray]);
 	const [mode, setMode] = useState<Mode>("room");
 	const [difficulty, setDifficulty] = useState("Sergeant");
+	const [localStep, setLocalStep] = useState<1 | 2>(1);
 	const [joinCode, setJoinCode] = useState("");
 	const [placement, setPlacement] = useState<Record<number, string>>({});
 	const [busy, setBusy] = useState(false);
@@ -124,7 +126,7 @@ export function BoardSetup() {
 	const placed = new Set(Object.values(placement));
 	const ready = placed.size === tray.length;
 	const reservePieces = tray.filter((piece) => !placed.has(piece.uid));
-	const canStart = ready && (mode === "room" || mode === "join") && !busy;
+	const canStart = ready && !busy;
 
 	const animatePlacement = (update: () => void) => {
 		const startViewTransition = (document as Document & { startViewTransition?: (callback: () => void) => void }).startViewTransition;
@@ -204,7 +206,7 @@ export function BoardSetup() {
 	const pickerPiece = pickerZone == null ? undefined : pieceById(placement[pickerZone]);
 
 	const startOnline = async () => {
-		if (!canStart) return;
+		if (!canStart || (mode !== "room" && mode !== "join")) return;
 		setBusy(true);
 		setError("");
 
@@ -225,6 +227,36 @@ export function BoardSetup() {
 		} finally {
 			setBusy(false);
 		}
+	};
+
+	const startMatch = () => {
+		if (!canStart) return;
+		if (mode === "room" || mode === "join") {
+			void startOnline();
+			return;
+		}
+		if (mode === "bot") {
+			sessionStorage.setItem(BOT_MATCH_KEY, JSON.stringify({ gold: placement, difficulty }));
+			router.push("/play/bot");
+			return;
+		}
+		if (localStep === 1) {
+			sessionStorage.setItem(`${LOCAL_MATCH_KEY}:gold`, JSON.stringify(placement));
+			setPlacement({});
+			setSelected(null);
+			setPickerZone(null);
+			setLocalStep(2);
+			setError("");
+			return;
+		}
+		const gold = sessionStorage.getItem(`${LOCAL_MATCH_KEY}:gold`);
+		if (!gold) {
+			setLocalStep(1);
+			setError("Commander 1 needs to deploy again.");
+			return;
+		}
+		sessionStorage.setItem(LOCAL_MATCH_KEY, JSON.stringify({ gold: JSON.parse(gold), slate: placement }));
+		router.push("/play/local");
 	};
 
 	useEffect(() => {
@@ -269,21 +301,24 @@ export function BoardSetup() {
 				</div>
 			</header>
 
-			<section className="mx-auto grid max-w-[1500px] gap-5 px-4 pb-32 pt-5 lg:grid-cols-[280px_minmax(520px,1fr)_320px] lg:px-6 lg:pb-10 xl:px-8">
-				<aside className="order-3 space-y-4 lg:order-1">
+			<section className="mx-auto grid max-w-[1500px] gap-5 px-4 pb-32 pt-5 lg:px-6 lg:pb-10 xl:grid-cols-[280px_minmax(520px,1fr)_320px] xl:px-8">
+				<aside className="order-3 space-y-4 xl:order-1">
 					<Card className="p-5">
 						<CardTitle>Select mode</CardTitle>
 						<div className="mt-4 grid gap-2">
 							{[
 								["room", "Create lobby", "Generate a room code."],
 								["join", "Join lobby", "Enter a code from a friend."],
-								["local", "Pass & play", "Coming after guest rooms."],
-								["bot", "Versus bot", "Coming after guest rooms."],
+								["local", "Pass & play", "Two commanders, one device."],
+								["bot", "Versus bot", "Practice against a simple commander."],
 							].map(([value, title, body]) => (
 								<button
 									key={value}
 									type="button"
-									onClick={() => setMode(value as Mode)}
+									onClick={() => {
+										setMode(value as Mode);
+										setLocalStep(1);
+									}}
 									className={`rounded-[6px] border p-3 text-left transition-colors ${
 										mode === value ? "border-[var(--accent)] bg-[#161f31]" : "border-[#2c3a55] bg-[#0b101b]"
 									}`}
@@ -337,13 +372,17 @@ export function BoardSetup() {
 									className="w-full rounded-[4px] border border-[#2c3a55] bg-[#0b101b] px-3 py-3 text-center font-mono text-lg uppercase tracking-[0.22em] outline-none focus:border-[var(--accent)]"
 								/>
 							) : null}
-							{mode === "local" ? <p className="text-sm leading-6 text-[#8a93a8]">Commander 2 will deploy after Commander 1 locks this board.</p> : null}
+							{mode === "local" ? (
+								<p className="text-sm leading-6 text-[#8a93a8]">
+									{localStep === 1 ? "Commander 2 deploys after Commander 1 locks this board." : "Commander 2: deploy without showing Commander 1."}
+								</p>
+							) : null}
 							{error ? <p className="text-sm leading-6 text-[#d98b73]">{error}</p> : null}
 						</div>
 					</Card>
 				</aside>
 
-				<section className="order-1 min-w-0 lg:order-2">
+				<section className="order-1 min-w-0 xl:order-2">
 					<div className="mb-4 flex flex-wrap items-end justify-between gap-3">
 						<div>
 							<div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">
@@ -442,20 +481,32 @@ export function BoardSetup() {
 					</div>
 
 					{/* Desktop actions. Mobile uses the sticky command bar below. */}
-					<div className="mt-4 hidden flex-wrap gap-3 lg:flex">
+					<div className="mt-4 hidden flex-wrap gap-3 xl:flex">
 						<Button variant="outline" onClick={autoDeploy} aria-label="Auto-deploy" title="Shuffle every piece onto the board" className="px-4">
 							<ShuffleIcon className="h-4 w-4" />
 						</Button>
 						<Button variant="outline" onClick={() => setPlacement({})}>
 							Clear board
 						</Button>
-						<Button className="ml-auto" disabled={!canStart} onClick={startOnline}>
-							{busy ? "Contacting HQ" : ready ? (mode === "join" ? "Join battle" : "Create room") : "Place all 21 pieces"}
+						<Button className="ml-auto" disabled={!canStart} onClick={startMatch}>
+							{busy
+								? "Contacting HQ"
+								: ready
+									? mode === "join"
+										? "Join battle"
+										: mode === "room"
+											? "Create room"
+											: mode === "bot"
+												? "Start practice"
+												: localStep === 1
+													? "Lock commander 1"
+													: "Start pass & play"
+									: "Place all 21 pieces"}
 						</Button>
 					</div>
 				</section>
 
-				<aside className="order-2 space-y-4 lg:order-3">
+				<aside className="order-2 space-y-4 xl:order-3">
 					<Card className="p-4 lg:p-5" onDragOver={(event) => event.preventDefault()} onDrop={recallToReserve}>
 						<div className="flex items-center justify-between gap-3">
 							<CardTitle>Reserve</CardTitle>
@@ -508,8 +559,8 @@ export function BoardSetup() {
 					<Button variant="outline" size="sm" className="shrink-0" onClick={() => setPlacement({})} aria-label="Clear board">
 						Clear
 					</Button>
-					<Button size="sm" className="flex-1" disabled={!canStart} onClick={startOnline}>
-						{busy ? "..." : ready ? (mode === "join" ? "Join" : "Create") : `${tray.length - placed.size} left`}
+					<Button size="sm" className="flex-1" disabled={!canStart} onClick={startMatch}>
+						{busy ? "..." : ready ? (mode === "join" ? "Join" : mode === "room" ? "Create" : mode === "bot" ? "Practice" : localStep === 1 ? "Lock P1" : "Start") : `${tray.length - placed.size} left`}
 					</Button>
 				</div>
 			</div>

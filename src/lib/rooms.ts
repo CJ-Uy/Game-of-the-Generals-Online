@@ -48,7 +48,14 @@ export async function saveRoom(row: RoomRow, state: RoomState, status = row.stat
 		.set({ guestToken: row.guestToken, state, status, version: row.version + 1, updatedAt: new Date() })
 		.where(eq(gameRooms.id, row.id))
 		.returning();
-	if (updated) await env.GOGO_CACHE?.put(`room:${updated.code}`, JSON.stringify(updated), { expirationTtl: ROOM_CACHE_TTL });
+	if (updated) {
+		await env.GOGO_CACHE?.put(`room:${updated.code}`, JSON.stringify(updated), { expirationTtl: ROOM_CACHE_TTL });
+		await env.ROOM_SYNC?.fetch(`https://room-sync/internal/rooms/${encodeURIComponent(updated.code)}/broadcast`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ version: updated.version }),
+		}).catch(() => undefined);
+	}
 	return updated ?? null;
 }
 
