@@ -26,17 +26,6 @@ body {
 	color: var(--accent-foreground);
 }
 
-@keyframes wr-rise {
-	from {
-		opacity: 0;
-		transform: translateY(16px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
 @keyframes wr-pulse {
 	0%,
 	100% {
@@ -44,29 +33,6 @@ body {
 	}
 	50% {
 		opacity: 0.3;
-	}
-}
-
-@keyframes wr-board-drift {
-	0%,
-	100% {
-		transform: translate(-50%, -52%) rotate(-5deg);
-	}
-	50% {
-		transform: translate(-49%, -53%) rotate(-4.4deg);
-	}
-}
-
-@keyframes wr-piece-move {
-	0%,
-	100% {
-		transform: translate(0, 0);
-	}
-	35% {
-		transform: translate(var(--move-x, 0), var(--move-y, 0));
-	}
-	70% {
-		transform: translate(calc(var(--move-x, 0) * 0.25), calc(var(--move-y, 0) * -0.35));
 	}
 }
 
@@ -80,20 +46,20 @@ body {
 	}
 }
 
-.wr-board {
-	animation: wr-board-drift 14s ease-in-out infinite;
-}
-
-.wr-piece {
-	animation: wr-piece-move 8s ease-in-out infinite;
-}
-
-.wr-arbiter {
-	animation: wr-arbiter-think 1.2s ease-in-out infinite;
-}
-
 .wr-arbiter-live {
 	animation: wr-arbiter-think 0.9s ease-in-out infinite;
+}
+
+.wr-war-board {
+	transform: translate(-50%, -52%) perspective(1700px) rotateX(30deg) rotateZ(-5deg);
+}
+
+@media (max-width: 640px) {
+	.wr-war-board {
+		top: 54%;
+		width: min(124vw, 560px);
+		transform: translate(-50%, -50%);
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

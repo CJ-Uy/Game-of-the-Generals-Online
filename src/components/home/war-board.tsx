@@ -382,8 +382,7 @@ export function WarBoard() {
 	return (
 		<div className="absolute inset-0" onClick={() => setGame((state) => ({ ...state, picker: null }))}>
 			<div
-				className="absolute left-1/2 top-1/2 w-[min(94vw,1100px)] [perspective:1700px]"
-				style={{ transform: "translate(-50%, -52%) perspective(1700px) rotateX(30deg) rotateZ(-5deg)" }}
+				className="wr-war-board absolute left-1/2 top-1/2 w-[min(94vw,1100px)] [perspective:1700px]"
 			>
 				<div className="relative aspect-[9/8]">
 					<div className="absolute inset-0 grid grid-cols-9 grid-rows-8 gap-[3px]">
