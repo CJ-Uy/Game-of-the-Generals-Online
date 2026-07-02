@@ -128,9 +128,6 @@ export function BoardSetup() {
 					<Button variant="ghost" size="sm" asChild>
 						<Link href="/">Home</Link>
 					</Button>
-					<Button size="sm" disabled={!ready}>
-						Battle
-					</Button>
 				</div>
 			</header>
 
