@@ -119,7 +119,8 @@ export function BoardSetup() {
 			<header className="sticky top-0 z-50 flex h-[60px] items-center justify-between gap-4 border-b border-[#1c2740] bg-[#0e1420]/90 px-5 backdrop-blur md:px-12">
 				<Link href="/" className="flex min-w-0 items-center gap-2.5">
 					<span className="text-[var(--accent)]">★</span>
-					<span className="truncate font-display text-lg font-bold uppercase tracking-[0.07em] md:text-xl">Game of the Generals</span>
+					<span className="font-display text-lg font-bold uppercase tracking-[0.07em] md:hidden">GoG Online</span>
+					<span className="hidden truncate font-display text-xl font-bold uppercase tracking-[0.07em] md:inline">Game of the Generals</span>
 				</Link>
 				<div className="flex items-center gap-2">
 					<Button variant="ghost" size="sm" asChild>
