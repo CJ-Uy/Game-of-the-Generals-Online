@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -229,6 +229,25 @@ export function GameRoom({ gameId }: { gameId: string }) {
 		else setSelected(null);
 	};
 
+	const startDrag = (event: DragEvent, piece?: PublicPiece) => {
+		if (!piece || piece.side !== "you" || !myTurn || busy) {
+			event.preventDefault();
+			return;
+		}
+		event.dataTransfer.setData("text/plain", String(piece.id));
+		event.dataTransfer.effectAllowed = "move";
+		setSelected(piece.id);
+	};
+
+	const dropOnCell = (event: DragEvent, col: number, row: number) => {
+		event.preventDefault();
+		const pieceId = Number(event.dataTransfer.getData("text/plain"));
+		const piece = pieces.find((item) => item.id === pieceId && item.alive && item.side === "you");
+		const target = byCell.get(row * COLS + col);
+		if (!piece || !myTurn || target?.side === "you" || Math.abs(piece.col - col) + Math.abs(piece.row - row) !== 1) return;
+		void act({ action: "move", pieceId, col, row });
+	};
+
 	const bySeniority = (a: PublicPiece, b: PublicPiece) => (rankIndex.get(a.rank ?? "FLG") ?? 0) - (rankIndex.get(b.rank ?? "FLG") ?? 0);
 	const myFallen = pieces.filter((piece) => piece.side === "you" && !piece.alive).sort(bySeniority);
 	const foeFallen = pieces.filter((piece) => piece.side === "foe" && !piece.alive);
@@ -309,6 +328,10 @@ export function GameRoom({ gameId }: { gameId: string }) {
 									<button
 										key={index}
 										type="button"
+										draggable={piece?.side === "you" && myTurn && !busy}
+										onDragStart={(event) => startDrag(event, piece)}
+										onDragOver={(event) => myTurn && event.preventDefault()}
+										onDrop={(event) => dropOnCell(event, col, row)}
 										onClick={() => onCell(col, row)}
 										aria-label={`${square(col, row)}${piece?.side === "you" ? ` ${piece.rank}` : piece ? " enemy" : ""}`}
 										className={`relative aspect-square rounded-[4px] border transition-colors ${
