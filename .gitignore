@@ -50,3 +50,7 @@ next-env.d.ts
 
 
 !.dev.vars.example
+
+.playwright-mcp
+.claude
+design

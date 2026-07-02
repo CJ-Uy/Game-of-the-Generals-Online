@@ -50,6 +50,29 @@ body {
 	animation: wr-arbiter-think 0.9s ease-in-out infinite;
 }
 
+@keyframes wr-rise {
+	from {
+		opacity: 0;
+		transform: translateY(18px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.wr-rise {
+	animation: wr-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.wr-no-scrollbar {
+	scrollbar-width: none;
+}
+
+.wr-no-scrollbar::-webkit-scrollbar {
+	display: none;
+}
+
 .wr-war-board {
 	transform: translate(-50%, -52%) perspective(1700px) rotateX(30deg) rotateZ(-5deg);
 }

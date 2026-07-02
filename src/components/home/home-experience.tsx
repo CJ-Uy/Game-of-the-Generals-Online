@@ -265,7 +265,7 @@ export function HomeExperience() {
 				</a>
 				<nav className="flex items-center gap-2 md:gap-4">
 					<Button variant="ghost" size="sm" className="hidden md:inline-flex" asChild>
-						<a href="#command">About</a>
+						<Link href="/about">About</Link>
 					</Button>
 					<Button variant="ghost" size="sm" onClick={() => setModal("shop")}>
 						Shop

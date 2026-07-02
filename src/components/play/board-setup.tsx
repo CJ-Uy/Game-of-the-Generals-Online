@@ -8,8 +8,18 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { TutorialModal } from "@/components/home/home-experience";
 
 const COLS = 9;
-const ROWS = 8;
+const ROWS = 3;
 const GUEST_LOADOUT_KEY = "gog:guest-loadout:v1";
+
+// Bot difficulty as a chain-of-command ladder. Spy is the wildcard: a random tier each match.
+const difficulties = [
+	{ glyph: "∧", name: "Private", note: "Barely a threat" },
+	{ glyph: "∧∧∧", name: "Sergeant", note: "Learning the ropes" },
+	{ glyph: "◆◆◆", name: "Captain", note: "Holds the line" },
+	{ glyph: "▲▲▲", name: "Colonel", note: "Plays to win" },
+	{ glyph: "★★★★★", name: "General", note: "Ruthless and patient" },
+	{ glyph: "✦", name: "Spy", note: "Random each match" },
+] as const;
 
 const ranks = [
 	{ key: "G5", glyph: "★★★★★", name: "5-Star General", count: 1 },
@@ -86,15 +96,25 @@ function CompactGlyph({ glyph }: { glyph: string }) {
 
 	if (!rows) return glyph;
 
+	// Stack the multi-star generals into rows at every breakpoint so the pips stay legible.
 	return (
-		<>
-			<span className="flex flex-col items-center justify-center leading-[0.82] sm:hidden">
-				{rows.map((row, index) => (
-					<span key={index}>{row}</span>
-				))}
-			</span>
-			<span className="hidden sm:inline">{glyph}</span>
-		</>
+		<span className="flex flex-col items-center justify-center leading-[0.82]">
+			{rows.map((row, index) => (
+				<span key={index}>{row}</span>
+			))}
+		</span>
+	);
+}
+
+function ShuffleIcon({ className }: { className?: string }) {
+	return (
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+			<path d="M16 3h5v5" />
+			<path d="M4 20 21 3" />
+			<path d="M21 16v5h-5" />
+			<path d="m15 15 6 6" />
+			<path d="m4 4 5 5" />
+		</svg>
 	);
 }
 
@@ -102,7 +122,7 @@ export function BoardSetup() {
 	const tray = useMemo(makeTray, []);
 	const trayIds = useMemo(() => new Set(tray.map((piece) => piece.uid)), [tray]);
 	const [mode, setMode] = useState<Mode>("bot");
-	const [difficulty, setDifficulty] = useState("Normal");
+	const [difficulty, setDifficulty] = useState("Sergeant");
 	const [roomCode, setRoomCode] = useState("");
 	const [joinCode, setJoinCode] = useState("");
 	const [placement, setPlacement] = useState<Record<number, string>>({});
@@ -172,6 +192,22 @@ export function BoardSetup() {
 		placePiece(zone, event.dataTransfer.getData("text/plain"));
 	};
 
+	const recallToReserve = (event: DragEvent) => {
+		event.preventDefault();
+		const uid = event.dataTransfer.getData("text/plain");
+		if (!uid) return;
+		animatePlacement(() =>
+			setPlacement((current) => {
+				const entry = Object.entries(current).find(([, value]) => value === uid);
+				if (!entry) return current;
+				const next = { ...current };
+				delete next[Number(entry[0])];
+				return next;
+			}),
+		);
+		setSelected(null);
+	};
+
 	const pieceById = (uid?: string) => tray.find((piece) => piece.uid === uid);
 	const pickerPiece = pickerZone == null ? undefined : pieceById(placement[pickerZone]);
 
@@ -217,16 +253,16 @@ export function BoardSetup() {
 				</div>
 			</header>
 
-			<section className="mx-auto grid max-w-[1500px] gap-5 px-4 py-5 lg:grid-cols-[280px_minmax(520px,1fr)_320px] lg:px-6 xl:px-8">
+			<section className="mx-auto grid max-w-[1500px] gap-5 px-4 pb-32 pt-5 lg:grid-cols-[280px_minmax(520px,1fr)_320px] lg:px-6 lg:pb-10 xl:px-8">
 				<aside className="order-3 space-y-4 lg:order-1">
 					<Card className="p-5">
 						<CardTitle>Select mode</CardTitle>
 						<div className="mt-4 grid gap-2">
 							{[
-								["bot", "Versus bot", "Pick a commander difficulty."],
 								["room", "Create lobby", "Generate a room code."],
 								["join", "Join lobby", "Enter a code from a friend."],
 								["local", "Pass & play", "Two commanders, one device."],
+								["bot", "Versus bot", "Pick a commander difficulty."],
 							].map(([value, title, body]) => (
 								<button
 									key={value}
@@ -244,20 +280,27 @@ export function BoardSetup() {
 					</Card>
 
 					<Card className="p-5">
-						<CardTitle>Match options</CardTitle>
+						<CardTitle>{mode === "bot" ? "Bot difficulty" : "Match options"}</CardTitle>
 						<div className="mt-4 space-y-3">
 							{mode === "bot" ? (
-								<div className="grid gap-2">
-									{["Easy", "Normal", "Hard"].map((level) => (
+								<div className="grid gap-1">
+									{difficulties.map((level) => (
 										<button
-											key={level}
+											key={level.name}
 											type="button"
-											onClick={() => setDifficulty(level)}
-											className={`rounded-[4px] border px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] ${
-												difficulty === level ? "border-[var(--accent)] text-[var(--accent)]" : "border-[#2c3a55] text-[#8a93a8]"
+											onClick={() => setDifficulty(level.name)}
+											aria-pressed={difficulty === level.name}
+											className={`flex items-center gap-3 rounded-[4px] border px-2.5 py-2 text-left transition-colors ${
+												difficulty === level.name
+													? "border-[var(--accent)] bg-[rgba(201,168,93,0.1)]"
+													: "border-[#2c3a55] hover:border-[rgba(201,168,93,0.5)]"
 											}`}
 										>
-											{level}
+											<span className="w-9 shrink-0 text-center text-[13px] leading-none tracking-[1px] text-[var(--accent)]">{level.glyph}</span>
+											<span className="min-w-0">
+												<span className="block font-mono text-[11px] uppercase tracking-[0.1em] text-[#ede8da]">{level.name}</span>
+												<span className="block truncate text-[11px] leading-4 text-[#8a93a8]">{level.note}</span>
+											</span>
 										</button>
 									))}
 								</div>
@@ -305,13 +348,32 @@ export function BoardSetup() {
 						<div className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#8fae6e]">{placed.size} / 21 placed</div>
 					</div>
 
+					<div
+						className="mb-4 h-1 w-full overflow-hidden rounded-full bg-[#182034]"
+						role="progressbar"
+						aria-valuemin={0}
+						aria-valuemax={tray.length}
+						aria-valuenow={placed.size}
+						aria-label="Pieces placed"
+					>
+						<div
+							className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300 ease-out"
+							style={{ width: `${(placed.size / tray.length) * 100}%` }}
+						/>
+					</div>
+
 					<div className="rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-2 sm:p-3">
+						<div className="mb-2 flex items-center justify-between px-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[#44506b]">
+							<span>Front line</span>
+							<span>facing the enemy</span>
+						</div>
 						<div className="grid grid-cols-9 gap-1">
 							{Array.from({ length: COLS * ROWS }).map((_, index) => {
 								const row = Math.floor(index / COLS);
 								const col = index % COLS;
-								const zone = (row - 5) * COLS + col;
-								const active = row >= 5;
+								const zone = row * COLS + col;
+								const active = row < ROWS;
+								const frontLine = row === 0;
 								const piece = active ? pieceById(placement[zone]) : undefined;
 
 								return (
@@ -319,20 +381,29 @@ export function BoardSetup() {
 										key={index}
 										type="button"
 										disabled={!active}
+										aria-label={active ? (piece ? `${piece.name} placed, tap to recall` : "Empty square, tap to place a piece") : "Enemy territory"}
 										onClick={() => {
 											if (!active) return;
+											if (piece) {
+												placePiece(zone, null);
+												return;
+											}
+											if (selected) {
+												placePiece(zone);
+												return;
+											}
 											setPickerZone(zone);
 											setSelected(null);
 										}}
 										onDragOver={(event) => active && event.preventDefault()}
 										onDrop={(event) => active && dropOnCell(event, zone)}
-										className={`aspect-square rounded-[4px] border transition-colors ${
+										className={`aspect-square rounded-[4px] border transition-colors ${frontLine ? "border-t-2 border-t-[rgba(201,168,93,0.4)]" : ""} ${
 											active
 												? piece
-													? "border-[rgba(201,168,93,0.5)] bg-[#121b2c]"
+													? "border-[rgba(201,168,93,0.5)] bg-[#121b2c] hover:border-[var(--accent)]"
 													: selected
-														? "border-[rgba(201,168,93,0.55)] bg-[rgba(201,168,93,0.08)]"
-														: "border-[#2c3a55] bg-[#121b2c]"
+														? "border-[rgba(201,168,93,0.55)] bg-[rgba(201,168,93,0.1)] hover:bg-[rgba(201,168,93,0.16)]"
+														: "border-[#2c3a55] bg-[#121b2c] hover:border-[rgba(201,168,93,0.4)]"
 												: "border-[#162035] bg-[#090e18]"
 										}`}
 									>
@@ -350,29 +421,33 @@ export function BoardSetup() {
 								);
 							})}
 						</div>
+						<div className="mt-2 px-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--accent)]/70">
+							Your three back rows
+						</div>
 					</div>
 
-					<div className="mt-4 flex flex-wrap gap-3">
-						<Button variant="outline" size="sm" onClick={autoDeploy} aria-label="Shuffle deployment" title="Shuffle deployment">
-							⇄
+					{/* Desktop actions. Mobile uses the sticky command bar below. */}
+					<div className="mt-4 hidden flex-wrap gap-3 lg:flex">
+						<Button variant="outline" onClick={autoDeploy} aria-label="Auto-deploy" title="Shuffle every piece onto the board" className="px-4">
+							<ShuffleIcon className="h-4 w-4" />
 						</Button>
 						<Button variant="outline" onClick={() => setPlacement({})}>
 							Clear board
 						</Button>
-						<Button disabled={!ready}>
-							Ready for battle
+						<Button className="ml-auto" disabled={!ready}>
+							{ready ? "Ready for battle" : "Place all 21 pieces"}
 						</Button>
 					</div>
 				</section>
 
 				<aside className="order-2 space-y-4 lg:order-3">
-					<Card className="p-4 lg:p-5">
+					<Card className="p-4 lg:p-5" onDragOver={(event) => event.preventDefault()} onDrop={recallToReserve}>
 						<div className="flex items-center justify-between gap-3">
 							<CardTitle>Reserve</CardTitle>
 							<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#8fae6e]">{reservePieces.length} left</span>
 						</div>
-						<CardContent className="mt-2 p-0 text-xs lg:text-sm">Tap a square to choose a piece. Drag placed pieces to move or swap.</CardContent>
-						<div className="mt-3 grid grid-cols-7 gap-1.5 sm:grid-cols-8 lg:mt-4 lg:grid-cols-3 lg:gap-2">
+						<CardContent className="mt-2 p-0 text-xs lg:text-sm">Tap an empty square to place. Tap a placed piece to recall it. Drag a piece back here too.</CardContent>
+						<div className="mt-3 grid grid-cols-6 gap-1.5 sm:grid-cols-8 lg:mt-4 lg:grid-cols-3 lg:gap-2">
 							{reservePieces.map((piece) => (
 								<button
 									key={piece.uid}
@@ -380,8 +455,12 @@ export function BoardSetup() {
 									draggable
 									onDragStart={(event) => startDrag(event, piece.uid)}
 									onClick={() => setSelected(selected === piece.uid ? null : piece.uid)}
-									className={`min-w-0 rounded-[5px] border p-1.5 transition-colors lg:p-2 ${
-										selected === piece.uid ? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)]" : "border-[#2c3a55] bg-[#121b2c]"
+									aria-pressed={selected === piece.uid}
+									aria-label={piece.name}
+									className={`flex min-w-0 flex-col items-center justify-center rounded-[5px] border py-2 transition-colors active:scale-[0.97] lg:items-start lg:p-2 ${
+										selected === piece.uid
+											? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)]"
+											: "border-[#2c3a55] bg-[#121b2c] hover:border-[rgba(201,168,93,0.5)]"
 									}`}
 								>
 									<div className={`${reserveGlyphSize(piece.glyph)} font-bold leading-none text-[var(--accent)]`}>
@@ -392,26 +471,34 @@ export function BoardSetup() {
 							))}
 						</div>
 					</Card>
-
-					<Card className="p-5">
-						<CardTitle>Loadout</CardTitle>
-						<div className="mt-4 grid gap-2 text-sm text-[#aeb5c4]">
-							<div className="flex justify-between gap-4">
-								<span>Board set</span>
-								<span className="text-[var(--accent)]">Brass Command</span>
-							</div>
-							<div className="flex justify-between gap-4">
-								<span>Piece skin</span>
-								<span className="text-[var(--accent)]">Standard Issue</span>
-							</div>
-							<div className="flex justify-between gap-4">
-								<span>Mode</span>
-								<span className="text-[var(--accent)]">{mode === "bot" ? `Bot · ${difficulty}` : mode}</span>
-							</div>
-						</div>
-					</Card>
 				</aside>
 			</section>
+			{/* Sticky command bar. Keeps the primary action reachable on mobile without scrolling. */}
+			<div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#1c2740] bg-[#0e1420]/95 px-4 py-3 backdrop-blur lg:hidden">
+				<div className="mx-auto flex max-w-[1500px] items-center gap-3">
+					<div className="shrink-0 font-mono text-[11px] uppercase leading-tight tracking-[0.14em] text-[#8fae6e]">
+						{placed.size} / 21
+						<span className="block text-[9px] tracking-[0.12em] text-[#5b647a]">placed</span>
+					</div>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={autoDeploy}
+						aria-label="Auto-deploy"
+						title="Shuffle every piece onto the board"
+						className="shrink-0 text-base leading-none"
+					>
+						<ShuffleIcon className="h-4 w-4" />
+					</Button>
+					<Button variant="outline" size="sm" className="shrink-0" onClick={() => setPlacement({})} aria-label="Clear board">
+						Clear
+					</Button>
+					<Button size="sm" className="flex-1" disabled={!ready}>
+						{ready ? "Ready for battle" : `${tray.length - placed.size} left`}
+					</Button>
+				</div>
+			</div>
+
 			{showTutorial ? <TutorialModal onClose={() => setShowTutorial(false)} /> : null}
 			{pickerZone != null ? (
 				<div className="fixed inset-0 z-[70] flex items-end bg-[#05070c]/65 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4" onClick={() => setPickerZone(null)}>
