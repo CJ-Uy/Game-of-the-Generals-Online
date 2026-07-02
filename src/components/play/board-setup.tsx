@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import Link from "next/link";
 import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { TutorialModal } from "@/components/home/home-experience";
 
 const COLS = 9;
 const ROWS = 8;
+const GUEST_LOADOUT_KEY = "gog:guest-loadout:v1";
 
 const ranks = [
 	{ key: "G5", glyph: "★★★★★", name: "5-Star General", count: 1 },
@@ -80,8 +81,26 @@ function reserveGlyphSize(glyph: string) {
 	return "text-xs sm:text-base lg:text-lg";
 }
 
+function CompactGlyph({ glyph }: { glyph: string }) {
+	const rows = glyph === "★★★★★" ? ["★★", "★★★"] : glyph === "★★★★" ? ["★★", "★★"] : null;
+
+	if (!rows) return glyph;
+
+	return (
+		<>
+			<span className="flex flex-col items-center justify-center leading-[0.82] sm:hidden">
+				{rows.map((row, index) => (
+					<span key={index}>{row}</span>
+				))}
+			</span>
+			<span className="hidden sm:inline">{glyph}</span>
+		</>
+	);
+}
+
 export function BoardSetup() {
 	const tray = useMemo(makeTray, []);
+	const trayIds = useMemo(() => new Set(tray.map((piece) => piece.uid)), [tray]);
 	const [mode, setMode] = useState<Mode>("bot");
 	const [difficulty, setDifficulty] = useState("Normal");
 	const [roomCode, setRoomCode] = useState("");
@@ -90,6 +109,7 @@ export function BoardSetup() {
 	const [selected, setSelected] = useState<string | null>(null);
 	const [showTutorial, setShowTutorial] = useState(false);
 	const [pickerZone, setPickerZone] = useState<number | null>(null);
+	const loadedLoadout = useRef(false);
 	const placed = new Set(Object.values(placement));
 	const ready = placed.size === tray.length;
 	const reservePieces = tray.filter((piece) => !placed.has(piece.uid));
@@ -154,6 +174,33 @@ export function BoardSetup() {
 
 	const pieceById = (uid?: string) => tray.find((piece) => piece.uid === uid);
 	const pickerPiece = pickerZone == null ? undefined : pieceById(placement[pickerZone]);
+
+	useEffect(() => {
+		try {
+			const saved = localStorage.getItem(GUEST_LOADOUT_KEY);
+			if (!saved) return;
+
+			const parsed = JSON.parse(saved) as Record<string, unknown>;
+			const next: Record<number, string> = {};
+			for (const [zoneKey, uid] of Object.entries(parsed)) {
+				const zone = Number(zoneKey);
+				if (Number.isInteger(zone) && zone >= 0 && zone < 27 && typeof uid === "string" && trayIds.has(uid)) {
+					next[zone] = uid;
+				}
+			}
+
+			setPlacement(next);
+		} catch {
+			localStorage.removeItem(GUEST_LOADOUT_KEY);
+		} finally {
+			loadedLoadout.current = true;
+		}
+	}, [trayIds]);
+
+	useEffect(() => {
+		if (!loadedLoadout.current) return;
+		localStorage.setItem(GUEST_LOADOUT_KEY, JSON.stringify(placement));
+	}, [placement]);
 
 	return (
 		<main className="min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)]">
@@ -296,7 +343,7 @@ export function BoardSetup() {
 												style={{ viewTransitionName: `piece-${piece.uid}` } as CSSProperties}
 												className={`mx-auto flex h-[74%] w-[86%] items-center justify-center overflow-hidden rounded-[4px] border border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold leading-none text-[#0e1420]/75 ${boardGlyphSize(piece.glyph)}`}
 											>
-												{piece.glyph}
+												<CompactGlyph glyph={piece.glyph} />
 											</span>
 										) : null}
 									</button>
@@ -337,7 +384,9 @@ export function BoardSetup() {
 										selected === piece.uid ? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)]" : "border-[#2c3a55] bg-[#121b2c]"
 									}`}
 								>
-									<div className={`${reserveGlyphSize(piece.glyph)} font-bold leading-none text-[var(--accent)]`}>{piece.glyph}</div>
+									<div className={`${reserveGlyphSize(piece.glyph)} font-bold leading-none text-[var(--accent)]`}>
+										<CompactGlyph glyph={piece.glyph} />
+									</div>
 									<div className="mt-1 hidden truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8] lg:block">{piece.name}</div>
 								</button>
 							))}
@@ -397,7 +446,9 @@ export function BoardSetup() {
 										onClick={() => placePiece(pickerZone, piece.uid)}
 										className="rounded-[5px] border border-[#2c3a55] bg-[#121b2c] p-3 text-left transition-colors active:scale-[0.98] hover:border-[var(--accent)]"
 									>
-										<div className={`${glyphSize(piece.glyph)} font-bold leading-none text-[var(--accent)]`}>{piece.glyph}</div>
+										<div className={`${glyphSize(piece.glyph)} font-bold leading-none text-[var(--accent)]`}>
+											<CompactGlyph glyph={piece.glyph} />
+										</div>
 										<div className="mt-2 truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8]">{piece.name}</div>
 									</button>
 								))
