@@ -68,6 +68,18 @@ function glyphSize(glyph: string) {
 	return "text-base sm:text-lg";
 }
 
+function boardGlyphSize(glyph: string) {
+	if (glyph.length >= 4) return "text-[7px] tracking-normal sm:text-[10px]";
+	if (glyph.length === 3) return "text-[9px] sm:text-xs";
+	return "text-xs sm:text-base";
+}
+
+function reserveGlyphSize(glyph: string) {
+	if (glyph.length >= 4) return "text-[7px] tracking-normal sm:text-[9px] lg:text-xs";
+	if (glyph.length === 3) return "text-[9px] sm:text-xs lg:text-sm";
+	return "text-xs sm:text-base lg:text-lg";
+}
+
 export function BoardSetup() {
 	const tray = useMemo(makeTray, []);
 	const [mode, setMode] = useState<Mode>("bot");
@@ -159,7 +171,7 @@ export function BoardSetup() {
 			</header>
 
 			<section className="mx-auto grid max-w-[1500px] gap-5 px-4 py-5 lg:grid-cols-[280px_minmax(520px,1fr)_320px] lg:px-6 xl:px-8">
-				<aside className="order-2 space-y-4 lg:order-1">
+				<aside className="order-3 space-y-4 lg:order-1">
 					<Card className="p-5">
 						<CardTitle>Select mode</CardTitle>
 						<div className="mt-4 grid gap-2">
@@ -282,7 +294,7 @@ export function BoardSetup() {
 												draggable
 												onDragStart={(event) => startDrag(event, piece.uid)}
 												style={{ viewTransitionName: `piece-${piece.uid}` } as CSSProperties}
-												className={`mx-auto flex h-[74%] w-[82%] items-center justify-center rounded-[4px] border border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold text-[#0e1420]/75 ${glyphSize(piece.glyph)}`}
+												className={`mx-auto flex h-[74%] w-[86%] items-center justify-center overflow-hidden rounded-[4px] border border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold leading-none text-[#0e1420]/75 ${boardGlyphSize(piece.glyph)}`}
 											>
 												{piece.glyph}
 											</span>
@@ -306,11 +318,14 @@ export function BoardSetup() {
 					</div>
 				</section>
 
-				<aside className="order-3 space-y-4">
-					<Card className="p-5">
-						<CardTitle>Reserve</CardTitle>
-						<CardContent className="mt-3 p-0">Tap a square to choose a reserve piece. Drag placed pieces to move or swap.</CardContent>
-						<div className="mt-4 grid grid-cols-3 gap-2">
+				<aside className="order-2 space-y-4 lg:order-3">
+					<Card className="p-4 lg:p-5">
+						<div className="flex items-center justify-between gap-3">
+							<CardTitle>Reserve</CardTitle>
+							<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#8fae6e]">{reservePieces.length} left</span>
+						</div>
+						<CardContent className="mt-2 p-0 text-xs lg:text-sm">Tap a square to choose a piece. Drag placed pieces to move or swap.</CardContent>
+						<div className="mt-3 grid grid-cols-7 gap-1.5 sm:grid-cols-8 lg:mt-4 lg:grid-cols-3 lg:gap-2">
 							{reservePieces.map((piece) => (
 								<button
 									key={piece.uid}
@@ -318,12 +333,12 @@ export function BoardSetup() {
 									draggable
 									onDragStart={(event) => startDrag(event, piece.uid)}
 									onClick={() => setSelected(selected === piece.uid ? null : piece.uid)}
-									className={`rounded-[5px] border p-2 transition-colors ${
+									className={`min-w-0 rounded-[5px] border p-1.5 transition-colors lg:p-2 ${
 										selected === piece.uid ? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)]" : "border-[#2c3a55] bg-[#121b2c]"
 									}`}
 								>
-									<div className={`${glyphSize(piece.glyph)} font-bold leading-none text-[var(--accent)]`}>{piece.glyph}</div>
-									<div className="mt-1 truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8]">{piece.name}</div>
+									<div className={`${reserveGlyphSize(piece.glyph)} font-bold leading-none text-[var(--accent)]`}>{piece.glyph}</div>
+									<div className="mt-1 hidden truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8] lg:block">{piece.name}</div>
 								</button>
 							))}
 						</div>
