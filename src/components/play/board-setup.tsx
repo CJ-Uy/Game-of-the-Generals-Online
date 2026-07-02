@@ -4,6 +4,7 @@ import { useMemo, useState, type DragEvent } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { TutorialModal } from "@/components/home/home-experience";
 
 const COLS = 9;
 const ROWS = 8;
@@ -74,6 +75,7 @@ export function BoardSetup() {
 	const [joinCode, setJoinCode] = useState("");
 	const [placement, setPlacement] = useState<Record<number, string>>({});
 	const [selected, setSelected] = useState<string | null>(null);
+	const [showTutorial, setShowTutorial] = useState(false);
 	const placed = new Set(Object.values(placement));
 	const ready = placed.size === tray.length;
 
@@ -127,7 +129,7 @@ export function BoardSetup() {
 						<Link href="/">Home</Link>
 					</Button>
 					<Button size="sm" disabled={!ready}>
-						Ready
+						Battle
 					</Button>
 				</div>
 			</header>
@@ -203,7 +205,18 @@ export function BoardSetup() {
 				<section className="order-1 min-w-0 lg:order-2">
 					<div className="mb-4 flex flex-wrap items-end justify-between gap-3">
 						<div>
-							<div className="font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">Deployment</div>
+							<div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">
+								<span>Deployment</span>
+								<button
+									type="button"
+									aria-label="Open field manual"
+									title="Open field manual"
+									onClick={() => setShowTutorial(true)}
+									className="flex h-7 w-7 items-center justify-center rounded-full border border-[#2c3a55] bg-[#0b101b] text-[13px] tracking-normal text-[#8a93a8] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+								>
+									i
+								</button>
+							</div>
 							<h1 className="font-display text-[clamp(42px,5.6vw,76px)] font-extrabold uppercase leading-none">Position your army.</h1>
 						</div>
 						<div className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#8fae6e]">{placed.size} / 21 placed</div>
@@ -252,12 +265,14 @@ export function BoardSetup() {
 					</div>
 
 					<div className="mt-4 flex flex-wrap gap-3">
-						<Button onClick={autoDeploy}>Shuffle deployment</Button>
+						<Button variant="outline" size="sm" onClick={autoDeploy} aria-label="Shuffle deployment" title="Shuffle deployment">
+							⇄
+						</Button>
 						<Button variant="outline" onClick={() => setPlacement({})}>
 							Clear board
 						</Button>
-						<Button variant="outline" disabled={!ready}>
-							Start battle
+						<Button disabled={!ready}>
+							Ready for battle
 						</Button>
 					</div>
 				</section>
@@ -306,6 +321,7 @@ export function BoardSetup() {
 					</Card>
 				</aside>
 			</section>
+			{showTutorial ? <TutorialModal onClose={() => setShowTutorial(false)} /> : null}
 		</main>
 	);
 }

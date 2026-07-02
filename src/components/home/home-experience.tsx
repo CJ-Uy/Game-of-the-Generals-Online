@@ -64,7 +64,7 @@ function Modal({
 	);
 }
 
-function TutorialModal({ onClose }: { onClose: () => void }) {
+export function TutorialModal({ onClose }: { onClose: () => void }) {
 	const [step, setStep] = useState(0);
 	const steps = [
 		{
