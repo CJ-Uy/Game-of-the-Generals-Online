@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
@@ -123,6 +123,9 @@ export function BoardSetup() {
 	const [showTutorial, setShowTutorial] = useState(false);
 	const [pickerZone, setPickerZone] = useState<number | null>(null);
 	const loadedLoadout = useRef(false);
+	const touchDrag = useRef<{ uid: string; pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
+	const suppressClick = useRef(false);
+	const [draggingUid, setDraggingUid] = useState<string | null>(null);
 	const placed = new Set(Object.values(placement));
 	const ready = placed.size === tray.length;
 	const reservePieces = tray.filter((piece) => !placed.has(piece.uid));
@@ -190,6 +193,10 @@ export function BoardSetup() {
 		event.preventDefault();
 		const uid = event.dataTransfer.getData("text/plain");
 		if (!uid) return;
+		recallPiece(uid);
+	};
+
+	const recallPiece = (uid: string) => {
 		animatePlacement(() =>
 			setPlacement((current) => {
 				const entry = Object.entries(current).find(([, value]) => value === uid);
@@ -200,6 +207,48 @@ export function BoardSetup() {
 			}),
 		);
 		setSelected(null);
+	};
+
+	const beginTouchDrag = (event: PointerEvent<HTMLElement>, uid: string) => {
+		if (event.pointerType === "mouse") return;
+		touchDrag.current = { uid, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, dragging: false };
+		event.currentTarget.setPointerCapture(event.pointerId);
+	};
+
+	const moveTouchDrag = (event: PointerEvent<HTMLElement>) => {
+		const drag = touchDrag.current;
+		if (!drag || drag.pointerId !== event.pointerId) return;
+		if (!drag.dragging && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 8) return;
+		drag.dragging = true;
+		setDraggingUid(drag.uid);
+		event.preventDefault();
+	};
+
+	const endTouchDrag = (event: PointerEvent<HTMLElement>) => {
+		const drag = touchDrag.current;
+		if (!drag || drag.pointerId !== event.pointerId) return;
+		touchDrag.current = null;
+		setDraggingUid(null);
+		if (!drag.dragging) return;
+
+		suppressClick.current = true;
+		event.preventDefault();
+		const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+		const zoneEl = target?.closest<HTMLElement>("[data-setup-zone]");
+		if (zoneEl) {
+			const zone = Number(zoneEl.dataset.setupZone);
+			if (Number.isInteger(zone)) placePiece(zone, drag.uid);
+			return;
+		}
+		if (target?.closest("[data-reserve-drop]")) recallPiece(drag.uid);
+		else setSelected(null);
+	};
+
+	const cancelTouchDrag = (event: PointerEvent<HTMLElement>) => {
+		const drag = touchDrag.current;
+		if (drag?.pointerId !== event.pointerId) return;
+		touchDrag.current = null;
+		setDraggingUid(null);
 	};
 
 	const pieceById = (uid?: string) => tray.find((piece) => piece.uid === uid);
@@ -435,8 +484,13 @@ export function BoardSetup() {
 										key={index}
 										type="button"
 										disabled={!active}
+										data-setup-zone={active ? zone : undefined}
 										aria-label={active ? (piece ? `${piece.name} placed, tap to recall` : "Empty square, tap to place a piece") : "Enemy territory"}
 										onClick={() => {
+											if (suppressClick.current) {
+												suppressClick.current = false;
+												return;
+											}
 											if (!active) return;
 											if (piece) {
 												placePiece(zone, null);
@@ -465,8 +519,14 @@ export function BoardSetup() {
 											<span
 												draggable
 												onDragStart={(event) => startDrag(event, piece.uid)}
+												onPointerDown={(event) => beginTouchDrag(event, piece.uid)}
+												onPointerMove={moveTouchDrag}
+												onPointerUp={endTouchDrag}
+												onPointerCancel={cancelTouchDrag}
 												style={{ viewTransitionName: `piece-${piece.uid}` } as CSSProperties}
-												className={`mx-auto flex h-[74%] w-[86%] items-center justify-center overflow-hidden rounded-[4px] border border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold leading-none text-[#0e1420]/75 ${boardGlyphSize(piece.glyph)}`}
+												className={`mx-auto flex h-[74%] w-[86%] touch-none items-center justify-center overflow-hidden rounded-[4px] border border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold leading-none text-[#0e1420]/75 ${boardGlyphSize(piece.glyph)} ${
+													draggingUid === piece.uid ? "opacity-70 ring-2 ring-[var(--accent)]" : ""
+												}`}
 											>
 												<CompactGlyph glyph={piece.glyph} />
 											</span>
@@ -507,7 +567,7 @@ export function BoardSetup() {
 				</section>
 
 				<aside className="order-2 space-y-4 xl:order-3">
-					<Card className="p-4 lg:p-5" onDragOver={(event) => event.preventDefault()} onDrop={recallToReserve}>
+					<Card className="p-4 lg:p-5" data-reserve-drop onDragOver={(event) => event.preventDefault()} onDrop={recallToReserve}>
 						<div className="flex items-center justify-between gap-3">
 							<CardTitle>Reserve</CardTitle>
 							<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#8fae6e]">{reservePieces.length} left</span>
@@ -520,13 +580,25 @@ export function BoardSetup() {
 									type="button"
 									draggable
 									onDragStart={(event) => startDrag(event, piece.uid)}
-									onClick={() => setSelected(selected === piece.uid ? null : piece.uid)}
+									onPointerDown={(event) => beginTouchDrag(event, piece.uid)}
+									onPointerMove={moveTouchDrag}
+									onPointerUp={endTouchDrag}
+									onPointerCancel={cancelTouchDrag}
+									onClick={() => {
+										if (suppressClick.current) {
+											suppressClick.current = false;
+											return;
+										}
+										setSelected(selected === piece.uid ? null : piece.uid);
+									}}
 									aria-pressed={selected === piece.uid}
 									aria-label={piece.name}
-									className={`flex min-w-0 flex-col items-center justify-center rounded-[5px] border py-2 transition-colors active:scale-[0.97] lg:items-start lg:p-2 ${
+									className={`flex min-w-0 touch-none flex-col items-center justify-center rounded-[5px] border py-2 transition-colors active:scale-[0.97] lg:items-start lg:p-2 ${
 										selected === piece.uid
 											? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)]"
-											: "border-[#2c3a55] bg-[#121b2c] hover:border-[rgba(201,168,93,0.5)]"
+											: draggingUid === piece.uid
+												? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)] opacity-70"
+												: "border-[#2c3a55] bg-[#121b2c] hover:border-[rgba(201,168,93,0.5)]"
 									}`}
 								>
 									<div className={`${reserveGlyphSize(piece.glyph)} font-bold leading-none text-[var(--accent)]`}>
