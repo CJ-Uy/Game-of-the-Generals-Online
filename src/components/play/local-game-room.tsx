@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -73,6 +73,9 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 	const [error, setError] = useState("");
 	const [botLevel, setBotLevel] = useState("Sergeant");
 	const [botThinking, setBotThinking] = useState(false);
+	const touchDrag = useRef<{ pieceId: number; pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
+	const suppressClick = useRef(false);
+	const [draggingPiece, setDraggingPiece] = useState<number | null>(null);
 
 	useEffect(() => {
 		try {
@@ -173,6 +176,48 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 		movePiece(pieceId, col, row);
 	};
 
+	const beginTouchDrag = (event: PointerEvent<HTMLElement>, piece?: PublicPiece) => {
+		if (event.pointerType === "mouse") return;
+		if (!piece || piece.side !== "you" || !myTurn) return;
+		touchDrag.current = { pieceId: piece.id, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, dragging: false };
+		event.currentTarget.setPointerCapture(event.pointerId);
+	};
+
+	const moveTouchDrag = (event: PointerEvent<HTMLElement>) => {
+		const drag = touchDrag.current;
+		if (!drag || drag.pointerId !== event.pointerId) return;
+		if (!drag.dragging && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 8) return;
+		drag.dragging = true;
+		setSelected(drag.pieceId);
+		setDraggingPiece(drag.pieceId);
+		event.preventDefault();
+	};
+
+	const endTouchDrag = (event: PointerEvent<HTMLElement>) => {
+		const drag = touchDrag.current;
+		if (!drag || drag.pointerId !== event.pointerId) return;
+		touchDrag.current = null;
+		setDraggingPiece(null);
+		if (!drag.dragging) return;
+
+		suppressClick.current = true;
+		event.preventDefault();
+		const cellEl = (document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null)?.closest<HTMLElement>("[data-game-cell]");
+		const col = Number(cellEl?.dataset.col);
+		const row = Number(cellEl?.dataset.row);
+		const piece = pieces.find((item) => item.id === drag.pieceId && item.alive && item.side === "you");
+		const target = byCell.get(row * COLS + col);
+		if (!piece || !myTurn || !Number.isInteger(col) || !Number.isInteger(row) || target?.side === "you" || Math.abs(piece.col - col) + Math.abs(piece.row - row) !== 1) return;
+		movePiece(drag.pieceId, col, row);
+	};
+
+	const cancelTouchDrag = (event: PointerEvent<HTMLElement>) => {
+		const drag = touchDrag.current;
+		if (drag?.pointerId !== event.pointerId) return;
+		touchDrag.current = null;
+		setDraggingPiece(null);
+	};
+
 	const bySeniority = (a: PublicPiece, b: PublicPiece) => (rankIndex.get(a.rank ?? "FLG") ?? 0) - (rankIndex.get(b.rank ?? "FLG") ?? 0);
 	const myFallen = pieces.filter((piece) => piece.side === "you" && !piece.alive).sort(bySeniority);
 	const foeFallen = pieces.filter((piece) => piece.side === "foe" && !piece.alive);
@@ -239,22 +284,35 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 									<button
 										key={index}
 										type="button"
+										data-game-cell
+										data-col={col}
+										data-row={row}
 										draggable={piece?.side === "you" && myTurn}
 										onDragStart={(event) => startDrag(event, piece)}
 										onDragOver={(event) => myTurn && event.preventDefault()}
 										onDrop={(event) => dropOnCell(event, col, row)}
-										onClick={() => onCell(col, row)}
+										onPointerDown={(event) => beginTouchDrag(event, piece)}
+										onPointerMove={moveTouchDrag}
+										onPointerUp={endTouchDrag}
+										onPointerCancel={cancelTouchDrag}
+										onClick={() => {
+											if (suppressClick.current) {
+												suppressClick.current = false;
+												return;
+											}
+											onCell(col, row);
+										}}
 										aria-label={`${square(col, row)}${piece?.side === "you" ? ` ${piece.rank}` : piece ? " enemy" : ""}`}
 										className={`relative aspect-square rounded-[4px] border transition-colors ${
 											targets.has(index) ? "border-[rgba(201,168,93,0.55)] bg-[rgba(201,168,93,0.12)]" : "border-[#1c2740] bg-[#121b2c]"
-										}`}
+										} ${piece?.side === "you" && myTurn ? "touch-none" : ""}`}
 									>
 										{piece ? (
 											<span
 												className={`pointer-events-none mx-auto flex h-[74%] w-[86%] items-center justify-center overflow-hidden rounded-[4px] border font-bold leading-none ${
 													piece.side === "you"
 														? `border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75 ${boardGlyphSize(glyph)} ${
-																piece.id === selected ? "ring-2 ring-[var(--accent)]" : ""
+																piece.id === selected || draggingPiece === piece.id ? "ring-2 ring-[var(--accent)]" : ""
 															}`
 														: "border-[#2c3a55] bg-gradient-to-br from-[#253352] to-[#1a2338]"
 												}`}
