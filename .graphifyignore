@@ -1,0 +1,9 @@
+cloudflare-env.d.ts
+graphify-out/
+.next/
+.open-next/
+.wrangler/
+.playwright-mcp/
+.codex/
+.remember/
+node_modules/
