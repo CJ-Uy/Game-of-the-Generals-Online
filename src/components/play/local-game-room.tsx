@@ -1,14 +1,19 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import {
 	CompactGlyph,
 	CommandChain,
+	CapturedGuessTiles,
+	GuessBadge,
+	type GuessTag,
 	boardGlyphSize,
 	boardIndex,
+	guessOptions,
 	parseLastMove,
 	rankByKey,
 	rankIndex,
@@ -23,15 +28,19 @@ import {
 	chooseBotMove,
 	makeRandomLoadout,
 	makeSidePieces,
-	ranks,
 	resign,
 	toPublicRoom,
 	type PlayerSide,
 	type PublicPiece,
 	type PublicRoom,
-	type RankKey,
 	type RoomState,
 } from "@/lib/game";
+
+function animateBoard(update: () => void) {
+	const viewTransition = (document as Document & { startViewTransition?: (callback: () => void) => void }).startViewTransition;
+	if (viewTransition) viewTransition.call(document, () => flushSync(update));
+	else update();
+}
 
 export const LOCAL_MATCH_KEY = "gog:local-match:v1";
 export const BOT_MATCH_KEY = "gog:bot-match:v1";
@@ -56,7 +65,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 	const [viewSide, setViewSide] = useState<PlayerSide>("gold");
 	const [handoff, setHandoff] = useState<PlayerSide | null>(null);
 	const [selected, setSelected] = useState<number | null>(null);
-	const [tags, setTags] = useState<Record<number, RankKey>>({});
+	const [tags, setTags] = useState<Record<number, GuessTag>>({});
 	const [tagTarget, setTagTarget] = useState<number | null>(null);
 	const [error, setError] = useState("");
 	const [botLevel, setBotLevel] = useState("Sergeant");
@@ -109,7 +118,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 		if (!state || !myTurn) return;
 		try {
 			const next = applyMove(state, viewSide, pieceId, col, row);
-			setState(next);
+			animateBoard(() => setState(next));
 			setVersion((current) => current + 1);
 			setReviewBoard(false);
 			setSelected(null);
@@ -126,9 +135,9 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 		const timer = window.setTimeout(() => {
 			const move = chooseBotMove(state, "slate", botLevel);
 			if (!move) {
-				setState(addMessage(resign(state, "slate"), "sys", "Bot had no legal move."));
+				animateBoard(() => setState(addMessage(resign(state, "slate"), "sys", "Bot had no legal move.")));
 			} else {
-				setState(applyMove(state, "slate", move.pieceId, move.col, move.row));
+				animateBoard(() => setState(applyMove(state, "slate", move.pieceId, move.col, move.row)));
 			}
 			setVersion((current) => current + 1);
 			setBotThinking(false);
@@ -247,7 +256,14 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 				</div>
 			</header>
 
-			<section className="mx-auto grid max-w-[1180px] gap-5 px-4 pb-28 pt-5 lg:px-6 lg:pb-10 xl:grid-cols-[minmax(0,1fr)_320px]">
+			<section className="mx-auto grid max-w-[1360px] gap-5 px-4 pb-28 pt-5 lg:px-6 lg:pb-10 xl:grid-cols-[260px_minmax(0,760px)_300px]">
+				<aside className="hidden xl:block">
+					<div className="sticky top-[76px]">
+						<Card className="p-4">
+							<CommandChain />
+						</Card>
+					</div>
+				</aside>
 				<div className="mx-auto w-full max-w-[760px] min-w-0">
 					<div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[6px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] ${statusTone}`}>
 						<span className="flex items-center gap-2">
@@ -307,12 +323,13 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 												: isLastFrom || isLastTo
 													? `${lastMine ? "border-[#8fae6e]" : "border-[#d98b73]"} bg-[rgba(143,174,110,0.12)]`
 													: (viewCol + viewRow) % 2 === 0
-														? "border-[#1c2740] bg-[#121b2c]"
-														: "border-[#1c2740] bg-[#0d1524]"
+														? "border-[#36513a] bg-[#22351f]"
+														: "border-[#2c432d] bg-[#162716]"
 										} ${piece?.side === "you" && myTurn ? "touch-none" : ""}`}
 									>
 										{piece ? (
 											<span
+												style={{ viewTransitionName: `piece-${piece.id}` } as CSSProperties}
 												className={`pointer-events-none mx-auto flex h-[74%] w-[86%] items-center justify-center overflow-hidden rounded-[4px] border font-bold leading-none ${
 													piece.side === "you"
 														? `border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75 ${boardGlyphSize(glyph)} ${
@@ -324,11 +341,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 												{piece.side === "you" ? <CompactGlyph glyph={glyph} /> : null}
 											</span>
 										) : null}
-										{piece?.side === "foe" && tags[piece.id] ? (
-											<span className="pointer-events-none absolute -right-1 -top-1 z-[3] rounded-[3px] border border-[var(--accent)] bg-[#0e1420] px-1 py-px font-mono text-[8px] leading-[11px] tracking-normal text-[var(--accent)]">
-												{tags[piece.id]}
-											</span>
-										) : null}
+										{piece?.side === "foe" ? <GuessBadge tag={tags[piece.id]} /> : null}
 									</button>
 								);
 									})}
@@ -355,7 +368,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 							</div>
 							<div>
 								<CardTitle className="text-xl">Enemy captured</CardTitle>
-								<p className="mt-3 text-sm text-[#8a93a8]">{foeFallen.length ? `${foeFallen.length} hidden pieces captured.` : "None captured yet."}</p>
+								<CapturedGuessTiles pieces={foeFallen} tags={tags} onTag={setTagTarget} />
 							</div>
 						</div>
 					</Card>
@@ -371,9 +384,6 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 							<div className="mt-3 max-h-80 overflow-y-auto font-mono text-[11px] leading-6">
 								{room.state.plies.length ? room.state.plies.map((ply, index) => <div key={`${ply}-${index}`}>{index + 1}. {ply}</div>) : <p className="font-body text-xs text-[#5b647a]">No moves yet.</p>}
 							</div>
-						</Card>
-						<Card className="p-4">
-							<CommandChain />
 						</Card>
 						<Card className="p-4">
 							<CardTitle className="text-xl">Bot plan</CardTitle>
@@ -412,7 +422,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 							<Button variant="ghost" size="sm" onClick={() => setTagTarget(null)}>Close</Button>
 						</div>
 						<div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-							{ranks.map((rank) => (
+							{guessOptions.map((rank) => (
 								<button key={rank.key} type="button" onClick={() => { setTags((current) => ({ ...current, [tagTarget]: rank.key })); setTagTarget(null); }} className="rounded-[5px] border border-[#2c3a55] bg-[#121b2c] p-3 text-left transition-colors hover:border-[var(--accent)]">
 									<div className="font-bold leading-none text-[var(--accent)]"><CompactGlyph glyph={rank.glyph} /></div>
 									<div className="mt-2 truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8]">{rank.name}</div>

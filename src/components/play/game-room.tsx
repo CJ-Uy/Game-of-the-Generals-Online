@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -8,23 +9,24 @@ import { LocalGameRoom } from "@/components/play/local-game-room";
 import {
 	CompactGlyph,
 	CommandChain,
+	CapturedGuessTiles,
+	GuessBadge,
+	type GuessTag,
 	boardGlyphSize,
 	boardIndex,
+	guessOptions,
 	parseLastMove,
 	rankByKey,
 	rankIndex,
 	toBoardCell,
 	viewSquare,
 } from "@/components/play/board-view";
-import { COLS, ROWS, ranks, square, type PublicPiece, type PublicRoom, type RankKey, type RoomMessage } from "@/lib/game";
+import { COLS, ROWS, square, type PublicPiece, type PublicRoom, type RoomMessage } from "@/lib/game";
 
-function TagBadge({ tag }: { tag?: RankKey }) {
-	if (!tag) return null;
-	return (
-		<span className="pointer-events-none absolute -right-1 -top-1 z-[3] rounded-[3px] border border-[var(--accent)] bg-[#0e1420] px-1 py-px font-mono text-[8px] leading-[11px] tracking-normal text-[var(--accent)]">
-			{tag}
-		</span>
-	);
+function animateBoard(update: () => void) {
+	const viewTransition = (document as Document & { startViewTransition?: (callback: () => void) => void }).startViewTransition;
+	if (viewTransition) viewTransition.call(document, () => flushSync(update));
+	else update();
 }
 
 function MoveLog({ plies }: { plies: string[] }) {
@@ -127,7 +129,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const [room, setRoom] = useState<PublicRoom | null>(null);
 	const [error, setError] = useState("");
 	const [selected, setSelected] = useState<number | null>(null);
-	const [tags, setTags] = useState<Record<number, RankKey>>({});
+	const [tags, setTags] = useState<Record<number, GuessTag>>({});
 	const [tagTarget, setTagTarget] = useState<number | null>(null);
 	const [draft, setDraft] = useState("");
 	const [chatOpen, setChatOpen] = useState(false);
@@ -196,7 +198,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 		const movingPiece = room?.state.pieces.find((item) => item.id === pieceId && item.alive && item.side === "you");
 		const movingTarget = room?.state.pieces.find((item) => item.alive && item.col === col && item.row === row);
 		if (movingPiece) setPendingMove({ pieceId, col, row, capture: !!movingTarget });
-		setRoom((current) => {
+		animateBoard(() => setRoom((current) => {
 			if (!current || current.state.outcome) return current;
 			const piece = current.state.pieces.find((item) => item.id === pieceId && item.alive && item.side === "you");
 			const target = current.state.pieces.find((item) => item.alive && item.col === col && item.row === row);
@@ -211,7 +213,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 					pieces: current.state.pieces.map((item) => (item.id === pieceId ? { ...item, col, row } : item)),
 				},
 			};
-		});
+		}));
 	};
 
 	const act = async (body: Record<string, unknown>) => {
@@ -226,10 +228,10 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 			});
 			const payload = (await response.json()) as PublicRoom | { error?: string; room?: PublicRoom | null };
 			if (!response.ok) {
-				if ("room" in payload && payload.room) setRoom(payload.room);
+				if ("room" in payload && payload.room) animateBoard(() => setRoom(payload.room ?? null));
 				throw new Error("error" in payload ? payload.error : "Action failed.");
 			}
-			setRoom(payload as PublicRoom);
+			animateBoard(() => setRoom(payload as PublicRoom));
 			setPendingMove(null);
 			setReviewBoard(false);
 			setSelected(null);
@@ -405,7 +407,14 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 				</div>
 			</header>
 
-			<section className="mx-auto grid max-w-[1280px] gap-5 px-4 pb-28 pt-5 lg:px-6 lg:pb-10 xl:grid-cols-[minmax(0,1fr)_340px]">
+			<section className="mx-auto grid max-w-[1400px] gap-5 px-4 pb-28 pt-5 lg:px-6 lg:pb-10 xl:grid-cols-[260px_minmax(0,760px)_340px]">
+				<aside className="hidden xl:block">
+					<div className="sticky top-[76px]">
+						<Card className="p-4">
+							<CommandChain />
+						</Card>
+					</div>
+				</aside>
 				<div className="mx-auto w-full max-w-[760px] min-w-0">
 					<div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[6px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] ${statusTone}`}>
 						<span className="flex items-center gap-2">
@@ -471,12 +480,13 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 													: isLastFrom || isLastTo
 														? `${lastMine ? "border-[#8fae6e]" : "border-[#d98b73]"} bg-[rgba(143,174,110,0.12)]`
 														: (viewCol + viewRow) % 2 === 0
-															? "border-[#1c2740] bg-[#121b2c]"
-															: "border-[#1c2740] bg-[#0d1524]"
+														? "border-[#36513a] bg-[#22351f]"
+															: "border-[#2c432d] bg-[#162716]"
 										} ${piece?.side === "you" && myTurn ? "touch-none" : ""}`}
 									>
 										{piece ? (
 											<span
+												style={{ viewTransitionName: `piece-${piece.id}` } as CSSProperties}
 												className={`pointer-events-none mx-auto flex h-[74%] w-[86%] items-center justify-center overflow-hidden rounded-[4px] border font-bold leading-none ${
 													piece.side === "you"
 														? `border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75 ${boardGlyphSize(glyph)} ${
@@ -489,11 +499,11 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 											</span>
 										) : null}
 										{pendingMove?.capture && isPendingTo ? (
-											<span className="pointer-events-none absolute inset-x-1 bottom-1 z-[4] rounded-[3px] border border-[rgba(201,168,93,0.45)] bg-[#0e1420]/90 py-0.5 text-center font-mono text-[7px] uppercase tracking-[0.12em] text-[var(--accent)]">
+											<span className="wr-arbiter-chip pointer-events-none absolute inset-x-1 bottom-1 z-[4] overflow-hidden rounded-[3px] border border-[rgba(201,168,93,0.45)] bg-[#0e1420]/90 py-0.5 text-center font-mono text-[7px] uppercase tracking-[0.12em] text-[var(--accent)]">
 												Arbiter
 											</span>
 										) : null}
-										{piece?.side === "foe" ? <TagBadge tag={tags[piece.id]} /> : null}
+										{piece?.side === "foe" ? <GuessBadge tag={tags[piece.id]} /> : null}
 									</button>
 								);
 									})}
@@ -536,7 +546,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 							</div>
 							<div>
 								<CardTitle className="text-xl">Enemy captured</CardTitle>
-								<p className="mt-3 text-sm text-[#8a93a8]">{foeFallen.length ? `${foeFallen.length} hidden pieces captured.` : "None captured yet."}</p>
+								<CapturedGuessTiles pieces={foeFallen} tags={tags} onTag={setTagTarget} />
 							</div>
 						</div>
 					</Card>
@@ -555,9 +565,6 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 							<div className="mt-3">
 								<MoveLog plies={room?.state.plies ?? []} />
 							</div>
-						</Card>
-						<Card className="p-4">
-							<CommandChain />
 						</Card>
 						<Card className="flex h-[min(52dvh,560px)] flex-col p-4">
 							<CardTitle className="mb-3 text-xl">Comms</CardTitle>
@@ -631,7 +638,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 						</div>
 
 						<div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-							{ranks.map((rank) => (
+							{guessOptions.map((rank) => (
 								<button
 									key={rank.key}
 									type="button"

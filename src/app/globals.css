@@ -50,6 +50,28 @@ body {
 	animation: wr-arbiter-think 0.9s ease-in-out infinite;
 }
 
+@keyframes wr-arbiter-sweep {
+	from {
+		transform: translateX(-120%);
+	}
+	to {
+		transform: translateX(120%);
+	}
+}
+
+.wr-arbiter-chip::before {
+	position: absolute;
+	inset: 0;
+	content: "";
+	background: linear-gradient(90deg, transparent, rgba(201, 168, 93, 0.42), transparent);
+	animation: wr-arbiter-sweep 0.75s ease-in-out infinite;
+}
+
+::view-transition-group(*) {
+	animation-duration: 180ms;
+	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @keyframes wr-rise {
 	from {
 		opacity: 0;
