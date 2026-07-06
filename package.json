@@ -6,6 +6,7 @@
 		"dev": "next dev",
 		"build": "next build",
 		"start": "next start",
+		"check:room-sync": "node scripts/check-room-sync.mjs",
 		"lint": "next lint",
 		"deploy": "pnpm run deploy:sync && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
 		"deploy:sync": "wrangler deploy --config wrangler.room-sync.jsonc",

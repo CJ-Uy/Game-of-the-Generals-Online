@@ -1,5 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { gameRooms } from "@/db/schema";
 import { sideFromToken, toPublicRoom, type PlayerSide, type PublicRoom, type RoomState } from "@/lib/game";
@@ -37,7 +37,7 @@ export async function saveRoom(row: RoomRow, state: RoomState, status = row.stat
 	const [updated] = await db
 		.update(gameRooms)
 		.set({ guestToken: row.guestToken, state, status, version: row.version + 1, updatedAt: new Date() })
-		.where(eq(gameRooms.id, row.id))
+		.where(and(eq(gameRooms.id, row.id), eq(gameRooms.version, row.version)))
 		.returning();
 	if (updated) {
 		await env.ROOM_SYNC?.fetch(`https://room-sync/internal/rooms/${encodeURIComponent(updated.code)}/broadcast`, {

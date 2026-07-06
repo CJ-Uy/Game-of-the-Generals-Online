@@ -132,8 +132,9 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const [draft, setDraft] = useState("");
 	const [chatOpen, setChatOpen] = useState(false);
 	const [busy, setBusy] = useState(false);
-	const [live, setLive] = useState(false);
+	const [syncState, setSyncState] = useState<"polling" | "live" | "reconnecting">("polling");
 	const [reviewBoard, setReviewBoard] = useState(false);
+	const [pendingMove, setPendingMove] = useState<{ pieceId: number; col: number; row: number; capture: boolean } | null>(null);
 	const touchDrag = useRef<{ pieceId: number; pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
 	const suppressClick = useRef(false);
 	const [draggingPiece, setDraggingPiece] = useState<number | null>(null);
@@ -156,9 +157,9 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 
 	useEffect(() => {
 		void load();
-		const timer = window.setInterval(() => void load(), live ? 10000 : 1400);
+		const timer = window.setInterval(() => void load(), syncState === "live" ? 10000 : 1400);
 		return () => window.clearInterval(timer);
-	}, [load, live]);
+	}, [load, syncState]);
 
 	useEffect(() => {
 		if (!token || window.location.hostname !== "gogo.cjuy.dev") return;
@@ -171,12 +172,12 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 			url.protocol = window.location.protocol === "http:" ? "ws:" : "wss:";
 			url.searchParams.set("token", token);
 			socket = new WebSocket(url);
-			socket.onopen = () => setLive(true);
+			socket.onopen = () => setSyncState("live");
 			socket.onmessage = (event) => {
 				if (event.data !== "pong") void load();
 			};
 			socket.onclose = () => {
-				setLive(false);
+				setSyncState("reconnecting");
 				if (!closed) reconnect = window.setTimeout(connect, 1800);
 			};
 			socket.onerror = () => socket?.close();
@@ -185,18 +186,22 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 		connect();
 		return () => {
 			closed = true;
-			setLive(false);
+			setSyncState("polling");
 			window.clearTimeout(reconnect);
 			socket?.close();
 		};
 	}, [code, load, token]);
 
 	const optimisticMove = (pieceId: number, col: number, row: number) => {
+		const movingPiece = room?.state.pieces.find((item) => item.id === pieceId && item.alive && item.side === "you");
+		const movingTarget = room?.state.pieces.find((item) => item.alive && item.col === col && item.row === row);
+		if (movingPiece) setPendingMove({ pieceId, col, row, capture: !!movingTarget });
 		setRoom((current) => {
 			if (!current || current.state.outcome) return current;
 			const piece = current.state.pieces.find((item) => item.id === pieceId && item.alive && item.side === "you");
 			const target = current.state.pieces.find((item) => item.alive && item.col === col && item.row === row);
-			if (!piece || target) return current;
+			if (!piece) return current;
+			if (target) return current;
 			return {
 				...current,
 				state: {
@@ -217,11 +222,15 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 			const response = await fetch(`/api/rooms/${code}`, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ token, ...body }),
+				body: JSON.stringify({ token, version: room?.version, ...body }),
 			});
-			const payload = (await response.json()) as PublicRoom | { error?: string };
-			if (!response.ok) throw new Error("error" in payload ? payload.error : "Action failed.");
+			const payload = (await response.json()) as PublicRoom | { error?: string; room?: PublicRoom | null };
+			if (!response.ok) {
+				if ("room" in payload && payload.room) setRoom(payload.room);
+				throw new Error("error" in payload ? payload.error : "Action failed.");
+			}
 			setRoom(payload as PublicRoom);
+			setPendingMove(null);
 			setReviewBoard(false);
 			setSelected(null);
 			setError("");
@@ -229,6 +238,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 			setError(caught instanceof Error ? caught.message : "Action failed.");
 			void load();
 		} finally {
+			setPendingMove(null);
 			setBusy(false);
 		}
 	};
@@ -250,6 +260,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const myTurn = room?.status === "active" && !room.state.outcome && room.state.turn === room.side;
 	const sel = selected == null ? null : pieces.find((piece) => piece.id === selected && piece.alive);
 	const lastMove = parseLastMove(room?.state.plies ?? []);
+	const pendingPiece = pendingMove == null ? null : pieces.find((piece) => piece.id === pendingMove.pieceId);
 	const targets = new Set<number>();
 	if (sel && myTurn) {
 		for (const [dc, dr] of [
@@ -360,6 +371,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 					? "Your move"
 					: "Enemy move";
 	const statusTone = room?.state.outcome ? "border-[var(--accent)] bg-[rgba(201,168,93,0.12)] text-[var(--accent)]" : myTurn ? "border-[#8fae6e] bg-[rgba(143,174,110,0.12)] text-[#8fae6e]" : "border-[#7c3f36] bg-[rgba(124,63,54,0.18)] text-[#d98b73]";
+	const syncLabel = syncState === "live" ? "Live" : syncState === "reconnecting" ? "Reconnecting" : "Polling";
 
 	if (!token) {
 		return (
@@ -401,7 +413,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 							{statusText}
 						</span>
 						<span className="text-[#8a93a8]">
-							{live ? "Live" : "Sync"} · {room?.side === "gold" ? "Gold" : "Slate"} · Fallen {myFallen.length} · Taken {foeFallen.length}
+							{syncLabel} · {room?.side === "gold" ? "Gold" : "Slate"} · Fallen {myFallen.length} · Taken {foeFallen.length}
 						</span>
 					</div>
 					{error ? <div className="mb-3 rounded-[5px] border border-[#7c3f36] bg-[#2b1716] px-3 py-2 text-sm text-[#d98b73]">{error}</div> : null}
@@ -423,6 +435,8 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 										const isLastFrom = lastMove?.from.col === col && lastMove.from.row === row;
 										const isLastTo = lastMove?.to.col === col && lastMove.to.row === row;
 										const lastMine = lastMove?.side === room?.side;
+										const isPendingFrom = pendingPiece?.col === col && pendingPiece.row === row;
+										const isPendingTo = pendingMove?.col === col && pendingMove.row === row;
 								const isSelected = piece != null && piece.id === selected;
 								const glyph = piece?.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
 
@@ -452,6 +466,8 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 										className={`relative aspect-square rounded-[4px] border transition-colors ${
 											isTarget
 												? "border-[rgba(201,168,93,0.55)] bg-[rgba(201,168,93,0.12)]"
+													: isPendingFrom || isPendingTo
+														? "border-[var(--accent)] bg-[rgba(201,168,93,0.16)]"
 													: isLastFrom || isLastTo
 														? `${lastMine ? "border-[#8fae6e]" : "border-[#d98b73]"} bg-[rgba(143,174,110,0.12)]`
 														: (viewCol + viewRow) % 2 === 0
@@ -470,6 +486,11 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 												}`}
 											>
 												{piece.side === "you" ? <CompactGlyph glyph={glyph} /> : null}
+											</span>
+										) : null}
+										{pendingMove?.capture && isPendingTo ? (
+											<span className="pointer-events-none absolute inset-x-1 bottom-1 z-[4] rounded-[3px] border border-[rgba(201,168,93,0.45)] bg-[#0e1420]/90 py-0.5 text-center font-mono text-[7px] uppercase tracking-[0.12em] text-[var(--accent)]">
+												Arbiter
 											</span>
 										) : null}
 										{piece?.side === "foe" ? <TagBadge tag={tags[piece.id]} /> : null}
