@@ -18,7 +18,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
 		| { token?: string; action?: "resign" }
 		| null;
 	const { code } = await params;
-	const room = await findRoom(code, false);
+	const room = await findRoom(code);
 	if (!room) return json({ error: "Room not found." }, 404);
 
 	const token = body?.token ?? "";

@@ -19,7 +19,7 @@ const GLYPHS = {
 	LT2: "◆",
 	SGT: "∧∧∧",
 	PVT: "∧",
-	SPY: "✦",
+	SPY: "◉",
 	FLG: "⚑",
 } as const;
 
@@ -66,7 +66,7 @@ const RANKS = [
 type Rank = (typeof RANKS)[number];
 type Side = "gold" | "slate";
 type Duel = { col: number; row: number; phase: "landing" | "arbiter" };
-type Mark = "★" | "✦" | "∧" | "⚑";
+type Mark = "★" | "◉" | "∧" | "⚑";
 
 type Piece = {
 	id: number;
@@ -482,7 +482,7 @@ export function WarBoard() {
 						>
 							{[
 								["★", "★"],
-								["✦", "✦"],
+								["◉", "◉"],
 								["∧", "∧"],
 								["⚑", "⚑"],
 								["✕", null],

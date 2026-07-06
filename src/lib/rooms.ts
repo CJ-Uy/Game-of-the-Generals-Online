@@ -5,7 +5,6 @@ import { gameRooms } from "@/db/schema";
 import { sideFromToken, toPublicRoom, type PlayerSide, type PublicRoom, type RoomState } from "@/lib/game";
 
 export type RoomRow = typeof gameRooms.$inferSelect;
-const ROOM_CACHE_TTL = 60;
 
 export async function getRoomBindings() {
 	const { env } = await getCloudflareContext({ async: true });
@@ -14,7 +13,7 @@ export async function getRoomBindings() {
 
 export function makeCode() {
 	const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-	return `GG-${Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}`;
+	return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
 export function makeToken() {
@@ -27,17 +26,9 @@ export function parseState(row: RoomRow): RoomState {
 	return row.state as RoomState;
 }
 
-export async function findRoom(code: string, useCache = true) {
-	const { env, db } = await getRoomBindings();
-	const key = `room:${code.toUpperCase()}`;
-
-	if (useCache) {
-		const cached = await env.GOGO_CACHE?.get<RoomRow>(key, "json");
-		if (cached) return cached;
-	}
-
+export async function findRoom(code: string) {
+	const { db } = await getRoomBindings();
 	const [room] = await db.select().from(gameRooms).where(eq(gameRooms.code, code.toUpperCase())).limit(1);
-	if (room) await env.GOGO_CACHE?.put(key, JSON.stringify(room), { expirationTtl: ROOM_CACHE_TTL });
 	return room ?? null;
 }
 
@@ -49,7 +40,6 @@ export async function saveRoom(row: RoomRow, state: RoomState, status = row.stat
 		.where(eq(gameRooms.id, row.id))
 		.returning();
 	if (updated) {
-		await env.GOGO_CACHE?.put(`room:${updated.code}`, JSON.stringify(updated), { expirationTtl: ROOM_CACHE_TTL });
 		await env.ROOM_SYNC?.fetch(`https://room-sync/internal/rooms/${encodeURIComponent(updated.code)}/broadcast`, {
 			method: "POST",
 			headers: { "content-type": "application/json" },

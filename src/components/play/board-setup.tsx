@@ -20,7 +20,7 @@ const difficulties = [
 	{ glyph: "◆◆◆", name: "Captain", note: "Holds the line" },
 	{ glyph: "▲▲▲", name: "Colonel", note: "Plays to win" },
 	{ glyph: "★★★★★", name: "General", note: "Ruthless and patient" },
-	{ glyph: "✦", name: "Spy", note: "Random each match" },
+	{ glyph: "◉", name: "Spy", note: "Random each match" },
 ] as const;
 
 const ranks = [
@@ -37,7 +37,7 @@ const ranks = [
 	{ key: "LT2", glyph: "◆", name: "2nd Lieutenant", count: 1 },
 	{ key: "SGT", glyph: "∧∧∧", name: "Sergeant", count: 1 },
 	{ key: "PVT", glyph: "∧", name: "Private", count: 6 },
-	{ key: "SPY", glyph: "✦", name: "Spy", count: 2 },
+	{ key: "SPY", glyph: "◉", name: "Spy", count: 2 },
 	{ key: "FLG", glyph: "⚑", name: "Flag", count: 1 },
 ] as const;
 
@@ -129,7 +129,7 @@ export function BoardSetup() {
 	const placed = new Set(Object.values(placement));
 	const ready = placed.size === tray.length;
 	const reservePieces = tray.filter((piece) => !placed.has(piece.uid));
-	const canStart = ready && !busy;
+	const canStart = ready && !busy && (mode !== "join" || joinCode.length === 4);
 
 	const animatePlacement = (update: () => void) => {
 		const startViewTransition = (document as Document & { startViewTransition?: (callback: () => void) => void }).startViewTransition;
@@ -408,7 +408,7 @@ export function BoardSetup() {
 							{mode === "room" ? (
 								<div className="space-y-3">
 									<div className="rounded-[6px] border border-dashed border-[rgba(201,168,93,0.45)] p-4 text-center font-mono text-2xl font-semibold tracking-[0.2em] text-[var(--accent)]">
-										GG-....
+										....
 									</div>
 									<p className="text-sm leading-6 text-[#8a93a8]">A shareable code appears after you lock deployment.</p>
 								</div>
@@ -416,8 +416,8 @@ export function BoardSetup() {
 							{mode === "join" ? (
 								<input
 									value={joinCode}
-									onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z-]/g, "").slice(0, 7))}
-									placeholder="GG-XXXX"
+									onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))}
+									placeholder="XXXX"
 									className="w-full rounded-[4px] border border-[#2c3a55] bg-[#0b101b] px-3 py-3 text-center font-mono text-lg uppercase tracking-[0.22em] outline-none focus:border-[var(--accent)]"
 								/>
 							) : null}

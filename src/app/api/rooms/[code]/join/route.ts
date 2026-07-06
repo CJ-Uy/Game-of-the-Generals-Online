@@ -4,7 +4,7 @@ import { findRoom, json, makeToken, parseState, publicRoom, saveRoom } from "@/l
 export async function POST(request: Request, { params }: { params: Promise<{ code: string }> }) {
 	const body = (await request.json().catch(() => null)) as { loadout?: unknown } | null;
 	const { code } = await params;
-	const room = await findRoom(code, false);
+	const room = await findRoom(code);
 	if (!room) return json({ error: "Room not found." }, 404);
 	if (room.status !== "waiting" || room.guestToken) return json({ error: "Room already has two commanders." }, 409);
 

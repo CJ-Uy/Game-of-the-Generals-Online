@@ -1,33 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { LocalGameRoom } from "@/components/play/local-game-room";
+import {
+	CompactGlyph,
+	CommandChain,
+	boardGlyphSize,
+	boardIndex,
+	parseLastMove,
+	rankByKey,
+	rankIndex,
+	toBoardCell,
+	viewSquare,
+} from "@/components/play/board-view";
 import { COLS, ROWS, ranks, square, type PublicPiece, type PublicRoom, type RankKey, type RoomMessage } from "@/lib/game";
-
-const rankByKey = new Map(ranks.map((rank) => [rank.key, rank]));
-const rankIndex = new Map(ranks.map((rank, index) => [rank.key, index]));
-
-function boardGlyphSize(glyph: string) {
-	if (glyph.length >= 4) return "text-[7px] tracking-normal sm:text-[10px]";
-	if (glyph.length === 3) return "text-[9px] sm:text-xs";
-	return "text-xs sm:text-base";
-}
-
-function CompactGlyph({ glyph }: { glyph: string }) {
-	const rows = glyph === "★★★★★" ? ["★★", "★★★"] : glyph === "★★★★" ? ["★★", "★★"] : null;
-	return rows ? (
-		<span className="flex flex-col items-center justify-center leading-[0.82]">
-			{rows.map((row, index) => (
-				<span key={index}>{row}</span>
-			))}
-		</span>
-	) : (
-		glyph
-	);
-}
 
 function TagBadge({ tag }: { tag?: RankKey }) {
 	if (!tag) return null;
@@ -144,6 +133,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const [chatOpen, setChatOpen] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [live, setLive] = useState(false);
+	const [reviewBoard, setReviewBoard] = useState(false);
 	const touchDrag = useRef<{ pieceId: number; pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
 	const suppressClick = useRef(false);
 	const [draggingPiece, setDraggingPiece] = useState<number | null>(null);
@@ -201,8 +191,27 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 		};
 	}, [code, load, token]);
 
+	const optimisticMove = (pieceId: number, col: number, row: number) => {
+		setRoom((current) => {
+			if (!current || current.state.outcome) return current;
+			const piece = current.state.pieces.find((item) => item.id === pieceId && item.alive && item.side === "you");
+			const target = current.state.pieces.find((item) => item.alive && item.col === col && item.row === row);
+			if (!piece || target) return current;
+			return {
+				...current,
+				state: {
+					...current.state,
+					turn: current.side === "gold" ? "slate" : "gold",
+					plies: [...current.state.plies, `${current.side === "gold" ? "G" : "S"} ${square(piece.col, piece.row)}-${square(col, row)}`],
+					pieces: current.state.pieces.map((item) => (item.id === pieceId ? { ...item, col, row } : item)),
+				},
+			};
+		});
+	};
+
 	const act = async (body: Record<string, unknown>) => {
 		if (!token || busy) return;
+		if (body.action === "move") optimisticMove(Number(body.pieceId), Number(body.col), Number(body.row));
 		setBusy(true);
 		try {
 			const response = await fetch(`/api/rooms/${code}`, {
@@ -213,10 +222,12 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 			const payload = (await response.json()) as PublicRoom | { error?: string };
 			if (!response.ok) throw new Error("error" in payload ? payload.error : "Action failed.");
 			setRoom(payload as PublicRoom);
+			setReviewBoard(false);
 			setSelected(null);
 			setError("");
 		} catch (caught) {
 			setError(caught instanceof Error ? caught.message : "Action failed.");
+			void load();
 		} finally {
 			setBusy(false);
 		}
@@ -238,6 +249,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 
 	const myTurn = room?.status === "active" && !room.state.outcome && room.state.turn === room.side;
 	const sel = selected == null ? null : pieces.find((piece) => piece.id === selected && piece.alive);
+	const lastMove = parseLastMove(room?.state.plies ?? []);
 	const targets = new Set<number>();
 	if (sel && myTurn) {
 		for (const [dc, dr] of [
@@ -347,6 +359,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 				: myTurn
 					? "Your move"
 					: "Enemy move";
+	const statusTone = room?.state.outcome ? "border-[var(--accent)] bg-[rgba(201,168,93,0.12)] text-[var(--accent)]" : myTurn ? "border-[#8fae6e] bg-[rgba(143,174,110,0.12)] text-[#8fae6e]" : "border-[#7c3f36] bg-[rgba(124,63,54,0.18)] text-[#d98b73]";
 
 	if (!token) {
 		return (
@@ -382,12 +395,12 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 
 			<section className="mx-auto grid max-w-[1280px] gap-5 px-4 pb-28 pt-5 lg:px-6 lg:pb-10 xl:grid-cols-[minmax(0,1fr)_340px]">
 				<div className="mx-auto w-full max-w-[760px] min-w-0">
-					<div className="mb-3 flex flex-wrap items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.2em]">
-						<span className={`flex items-center gap-2 ${myTurn ? "text-[#8fae6e]" : "text-[#8a93a8]"}`}>
+					<div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[6px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] ${statusTone}`}>
+						<span className="flex items-center gap-2">
 							<span className={`h-2 w-2 rounded-full ${myTurn ? "bg-[#8fae6e]" : "bg-[var(--accent)]"}`} />
 							{statusText}
 						</span>
-						<span className="text-[#5b647a]">
+						<span className="text-[#8a93a8]">
 							{live ? "Live" : "Sync"} · {room?.side === "gold" ? "Gold" : "Slate"} · Fallen {myFallen.length} · Taken {foeFallen.length}
 						</span>
 					</div>
@@ -395,15 +408,21 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 
 					<div className="rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-2 sm:p-3">
 						<div className="mb-2 flex items-center justify-between px-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[#44506b]">
-							<span>Slate line</span>
+							<span>{room?.side === "slate" ? "Gold line" : "Slate line"}</span>
 							<span>tap an enemy piece to tag it</span>
 						</div>
-						<div className="grid grid-cols-9 gap-1">
-							{Array.from({ length: COLS * ROWS }).map((_, index) => {
-								const col = index % COLS;
-								const row = Math.floor(index / COLS);
-								const piece = byCell.get(index);
-								const isTarget = targets.has(index);
+						<div className="grid grid-cols-[1.25rem_repeat(9,minmax(0,1fr))] gap-1">
+							{Array.from({ length: ROWS }).map((_, viewRow) => (
+								<Fragment key={viewRow}>
+									<div className="flex items-center justify-center font-mono text-[9px] text-[#5b647a]">{viewSquare(room?.side ?? "gold", 0, viewRow).slice(1)}</div>
+									{Array.from({ length: COLS }).map((__, viewCol) => {
+										const { col, row } = toBoardCell(room?.side ?? "gold", viewCol, viewRow);
+										const index = boardIndex(col, row);
+										const piece = byCell.get(index);
+										const isTarget = targets.has(index);
+										const isLastFrom = lastMove?.from.col === col && lastMove.from.row === row;
+										const isLastTo = lastMove?.to.col === col && lastMove.to.row === row;
+										const lastMine = lastMove?.side === room?.side;
 								const isSelected = piece != null && piece.id === selected;
 								const glyph = piece?.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
 
@@ -412,8 +431,8 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 										key={index}
 										type="button"
 										data-game-cell
-										data-col={col}
-										data-row={row}
+											data-col={col}
+											data-row={row}
 										draggable={piece?.side === "you" && myTurn && !busy}
 										onDragStart={(event) => startDrag(event, piece)}
 										onDragOver={(event) => myTurn && event.preventDefault()}
@@ -429,11 +448,15 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 											}
 											onCell(col, row);
 										}}
-										aria-label={`${square(col, row)}${piece?.side === "you" ? ` ${piece.rank}` : piece ? " enemy" : ""}`}
+											aria-label={`${viewSquare(room?.side ?? "gold", viewCol, viewRow)}${piece?.side === "you" ? ` ${piece.rank}` : piece ? " enemy" : ""}`}
 										className={`relative aspect-square rounded-[4px] border transition-colors ${
 											isTarget
 												? "border-[rgba(201,168,93,0.55)] bg-[rgba(201,168,93,0.12)]"
-												: "border-[#1c2740] bg-[#121b2c]"
+													: isLastFrom || isLastTo
+														? `${lastMine ? "border-[#8fae6e]" : "border-[#d98b73]"} bg-[rgba(143,174,110,0.12)]`
+														: (viewCol + viewRow) % 2 === 0
+															? "border-[#1c2740] bg-[#121b2c]"
+															: "border-[#1c2740] bg-[#0d1524]"
 										} ${piece?.side === "you" && myTurn ? "touch-none" : ""}`}
 									>
 										{piece ? (
@@ -452,10 +475,18 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 										{piece?.side === "foe" ? <TagBadge tag={tags[piece.id]} /> : null}
 									</button>
 								);
-							})}
+									})}
+								</Fragment>
+							))}
+							<div />
+							{Array.from({ length: COLS }).map((_, viewCol) => (
+								<div key={viewCol} className="text-center font-mono text-[9px] uppercase text-[#5b647a]">
+									{viewSquare(room?.side ?? "gold", viewCol, ROWS - 1)[0]}
+								</div>
+							))}
 						</div>
 						<div className="mt-2 flex items-center justify-between gap-2 px-1 font-mono text-[9px] uppercase tracking-[0.2em]">
-							<span className="text-[var(--accent)]/70">Gold line</span>
+							<span className="text-[var(--accent)]/70">{room?.side === "slate" ? "Slate line" : "Gold line"}</span>
 							<span className="truncate text-[#44506b]">{sel?.rank ? `${rankByKey.get(sel.rank)?.name} - pick a square` : ""}</span>
 						</div>
 					</div>
@@ -488,6 +519,9 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 							</div>
 						</div>
 					</Card>
+					<Card className="mt-4 p-4 xl:hidden">
+						<CommandChain />
+					</Card>
 				</div>
 
 				<aside className="hidden xl:block">
@@ -500,6 +534,9 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 							<div className="mt-3">
 								<MoveLog plies={room?.state.plies ?? []} />
 							</div>
+						</Card>
+						<Card className="p-4">
+							<CommandChain />
 						</Card>
 						<Card className="flex h-[min(52dvh,560px)] flex-col p-4">
 							<CardTitle className="mb-3 text-xl">Comms</CardTitle>
@@ -594,15 +631,20 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 				</div>
 			) : null}
 
-			{room?.state.outcome ? (
+			{room?.state.outcome && !reviewBoard ? (
 				<div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#05070c]/80 p-4 backdrop-blur-sm">
 					<div className="wr-rise w-full max-w-md rounded-[10px] border border-[#2c3a55] bg-[#0e1420] p-8 text-center shadow-[0_18px_80px_rgba(0,0,0,0.65)]">
 						<div className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--accent)]">Battle report</div>
 						<div className="mt-2 font-display text-6xl font-extrabold uppercase leading-none">{statusText}</div>
 						<p className="mt-3 text-sm leading-6 text-[#8a93a8]">{room.state.outcome.note}</p>
-						<Button asChild className="mt-6">
-							<Link href="/play">New room</Link>
-						</Button>
+						<div className="mt-6 flex gap-3">
+							<Button className="flex-1" onClick={() => setReviewBoard(true)}>
+								View board
+							</Button>
+							<Button asChild className="flex-1" variant="outline">
+								<Link href="/play">New room</Link>
+							</Button>
+						</div>
 					</div>
 				</div>
 			) : null}

@@ -21,7 +21,7 @@ const ranks = [
 	["◆", "2nd Lieutenant", "x 1"],
 	["∧∧∧", "Sergeant", "x 1"],
 	["∧", "Private", "x 6"],
-	["✦", "Spy", "x 2"],
+	["◉", "Spy", "x 2"],
 	["⚑", "Flag", "x 1"],
 ];
 
@@ -192,8 +192,8 @@ function RankTrapDiagram() {
 	return (
 		<div className="grid gap-3">
 			{[
-				["✦", "kills", "★★★★★", "every officer"],
-				["∧", "kills", "✦", "only the private"],
+				["◉", "kills", "★★★★★", "every officer"],
+				["∧", "kills", "◉", "only the private"],
 			].map(([left, verb, right, label]) => (
 				<div key={label} className="flex items-center justify-center gap-3">
 					<div className="flex h-12 w-12 items-center justify-center rounded-[6px] border border-[#dabb74] bg-[#c9a85d] font-bold text-[#0e1420]/75">

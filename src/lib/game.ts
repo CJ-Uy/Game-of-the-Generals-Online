@@ -17,7 +17,7 @@ export const ranks = [
 	{ key: "LT2", glyph: "◆", name: "2nd Lieutenant", count: 1 },
 	{ key: "SGT", glyph: "∧∧∧", name: "Sergeant", count: 1 },
 	{ key: "PVT", glyph: "∧", name: "Private", count: 6 },
-	{ key: "SPY", glyph: "✦", name: "Spy", count: 2 },
+	{ key: "SPY", glyph: "◉", name: "Spy", count: 2 },
 	{ key: "FLG", glyph: "⚑", name: "Flag", count: 1 },
 ] as const;
 
@@ -283,7 +283,7 @@ export function toPublicRoom(code: string, status: RoomStatus, version: number, 
 			pieces: state.pieces.map(({ rank, owner, ...piece }) => ({
 				...piece,
 				side: owner === side ? "you" : "foe",
-				rank: owner === side ? rank : undefined,
+				rank: owner === side || state.outcome ? rank : undefined,
 			})),
 		},
 	};

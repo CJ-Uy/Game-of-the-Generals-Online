@@ -7,7 +7,7 @@ export async function POST(request: Request) {
 	const state = makeWaitingState(body?.loadout);
 	if (!state) return json({ error: "Deploy all 21 pieces before creating a room." }, 400);
 
-	const { db, env } = await getRoomBindings();
+	const { db } = await getRoomBindings();
 	const hostToken = makeToken();
 	const now = new Date();
 
@@ -18,7 +18,6 @@ export async function POST(request: Request) {
 				.insert(gameRooms)
 				.values({ id: crypto.randomUUID(), code, hostToken, state, createdAt: now, updatedAt: now })
 				.returning();
-			await env.GOGO_CACHE?.put(`room:${room.code}`, JSON.stringify(room), { expirationTtl: 60 });
 			return json({ token: hostToken, room: publicRoom(room, hostToken) });
 		} catch (error) {
 			if (!String(error).toLowerCase().includes("unique")) {

@@ -24,13 +24,13 @@ const ranks = [
 	["◆", "2nd Lieutenant"],
 	["∧∧∧", "Sergeant"],
 	["∧", "Private"],
-	["✦", "Spy"],
+	["◉", "Spy"],
 	["⚑", "Flag"],
 ];
 
 const upsets = [
 	{
-		glyph: "✦",
+		glyph: "◉",
 		title: "The spy outranks every general",
 		body: "A Spy quietly removes any officer it touches, from a Sergeant to a five-star General. Rank means nothing to it.",
 	},
@@ -100,7 +100,7 @@ function AboutHeader() {
 // A real slice of the game: your gold pieces, the enemy's hidden backs. Not a screenshot, the actual materials.
 function MiniBoard() {
 	const enemyBacks = Array.from({ length: 18 });
-	const yourRow = ["★★★★★", "✦", "⚑", "∧", "▲▲", "◆"];
+	const yourRow = ["★★★★★", "◉", "⚑", "∧", "▲▲", "◆"];
 
 	return (
 		<div className="mx-auto w-full max-w-[420px] rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-3 shadow-[0_30px_80px_rgba(0,0,0,0.55)]">
