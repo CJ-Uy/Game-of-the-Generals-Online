@@ -49,6 +49,14 @@ export function GuessBadge({ tag }: { tag?: GuessTag }) {
 	);
 }
 
+export function ArbiterChip() {
+	return (
+		<span className="wr-arbiter-chip pointer-events-none absolute inset-x-1 bottom-1 z-[4] overflow-hidden rounded-[3px] border border-[rgba(201,168,93,0.45)] bg-[#0e1420]/90 py-0.5 text-center font-mono text-[7px] uppercase tracking-[0.12em] text-[var(--accent)]">
+			Arbiter
+		</span>
+	);
+}
+
 export function boardIndex(col: number, row: number) {
 	return row * COLS + col;
 }
@@ -81,6 +89,15 @@ export function parseLastMove(plies: string[]): LastMove | null {
 		from: { col: FILES.indexOf(fromFile), row: ROWS - Number(fromRank) },
 		to: { col: FILES.indexOf(toFile), row: ROWS - Number(toRank) },
 	};
+}
+
+export function formatPlyForView(ply: string, side: PlayerSide) {
+	const match = /^([GS]) ([a-i])([1-8])([-x])([a-i])([1-8])$/.exec(ply);
+	if (!match) return ply;
+	const [, player, fromFile, fromRank, action, toFile, toRank] = match;
+	const from = toViewCell(side, FILES.indexOf(fromFile), ROWS - Number(fromRank));
+	const to = toViewCell(side, FILES.indexOf(toFile), ROWS - Number(toRank));
+	return `${player} ${FILES[from.col]}${ROWS - from.row}${action}${FILES[to.col]}${ROWS - to.row}`;
 }
 
 export function CommandChain() {
@@ -119,7 +136,7 @@ export function CommandChain() {
 					<CompactGlyph glyph={rankByKey.get("FLG")?.glyph ?? ""} />
 				</div>
 				<div className="font-mono text-[8px] uppercase leading-4 tracking-[0.08em] text-[#8a93a8]">
-					Flag x1 loses to all. Reach back line to win.
+					Flag x1 loses to attackers. Reach back line or attack enemy Flag to win.
 				</div>
 			</div>
 		</div>

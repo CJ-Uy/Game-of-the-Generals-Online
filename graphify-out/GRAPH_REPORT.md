@@ -1,16 +1,16 @@
 # Graph Report - Game-of-the-Generals-Online  (2026-07-07)
 
 ## Corpus Check
-- 46 files · ~54,195 words
+- 45 files · ~54,413 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 359 nodes · 568 edges · 23 communities (19 shown, 4 thin omitted)
+- 361 nodes · 575 edges · 23 communities (19 shown, 4 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `cf9a27b1`
+- Built from commit: `ed21efe0`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -83,7 +83,7 @@ Nodes (36): dependencies, class-variance-authority, clsx, drizzle-orm, next, @op
 
 ### Community 4 - "Community 4"
 Cohesion: 0.14
-Nodes (22): PlayerSide, PublicPiece, PublicRoom, boardGlyphSize(), boardIndex(), CapturedGuessTiles(), CommandChain(), CompactGlyph() (+14 more)
+Nodes (24): PlayerSide, PublicPiece, PublicRoom, ArbiterChip(), boardGlyphSize(), boardIndex(), CapturedGuessTiles(), CommandChain() (+16 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.10
@@ -138,7 +138,7 @@ Nodes (4): compat, __dirname, eslintConfig, __filename
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Button()` connect `Community 2` to `Community 4`?**
-  _High betweenness centrality (0.014) - this node is a cross-community bridge._
+  _High betweenness centrality (0.015) - this node is a cross-community bridge._
 - **Why does `Card()` connect `Community 2` to `Community 4`?**
   _High betweenness centrality (0.013) - this node is a cross-community bridge._
 - **Why does `CardTitle()` connect `Community 2` to `Community 4`?**

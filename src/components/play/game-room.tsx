@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { LocalGameRoom } from "@/components/play/local-game-room";
 import {
+	ArbiterChip,
 	CompactGlyph,
 	CommandChain,
 	CapturedGuessTiles,
@@ -14,6 +15,7 @@ import {
 	type GuessTag,
 	boardGlyphSize,
 	boardIndex,
+	formatPlyForView,
 	guessOptions,
 	parseLastMove,
 	rankByKey,
@@ -29,14 +31,14 @@ function animateBoard(update: () => void) {
 	else update();
 }
 
-function MoveLog({ plies }: { plies: string[] }) {
+function MoveLog({ plies, side }: { plies: string[]; side: PublicRoom["side"] }) {
 	return (
 		<div className="max-h-44 overflow-y-auto font-mono text-[11px] leading-6">
 			{plies.length ? (
 				plies.map((ply, index) => (
 					<div key={`${ply}-${index}`} className={`grid grid-cols-[2.2em_1fr] px-1 ${index % 2 ? "" : "bg-[#0b101b]"}`}>
-						<span className="text-[#5b647a]">{index + 1}</span>
-						<span className="text-[#ede8da]">{ply}</span>
+						<span className="text-[#5b647a]">{plies.length - index}</span>
+						<span className="text-[#ede8da]">{formatPlyForView(ply, side)}</span>
 					</div>
 				))
 			) : (
@@ -137,6 +139,8 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const [syncState, setSyncState] = useState<"polling" | "live" | "reconnecting">("polling");
 	const [reviewBoard, setReviewBoard] = useState(false);
 	const [pendingMove, setPendingMove] = useState<{ pieceId: number; col: number; row: number; capture: boolean } | null>(null);
+	const [arbiterCell, setArbiterCell] = useState<{ col: number; row: number; key: number } | null>(null);
+	const arbiterTimer = useRef<number | null>(null);
 	const touchDrag = useRef<{ pieceId: number; pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
 	const suppressClick = useRef(false);
 	const [draggingPiece, setDraggingPiece] = useState<number | null>(null);
@@ -144,6 +148,16 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	useEffect(() => {
 		setToken(sessionStorage.getItem(`gog:room:${code}:token`) ?? "");
 	}, [code]);
+
+	useEffect(() => () => {
+		if (arbiterTimer.current) window.clearTimeout(arbiterTimer.current);
+	}, []);
+
+	const showArbiter = (col: number, row: number) => {
+		if (arbiterTimer.current) window.clearTimeout(arbiterTimer.current);
+		setArbiterCell({ col, row, key: Date.now() });
+		arbiterTimer.current = window.setTimeout(() => setArbiterCell(null), 850);
+	};
 
 	const load = useCallback(async () => {
 		if (!token) return;
@@ -198,6 +212,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 		const movingPiece = room?.state.pieces.find((item) => item.id === pieceId && item.alive && item.side === "you");
 		const movingTarget = room?.state.pieces.find((item) => item.alive && item.col === col && item.row === row);
 		if (movingPiece) setPendingMove({ pieceId, col, row, capture: !!movingTarget });
+		if (movingTarget) showArbiter(col, row);
 		animateBoard(() => setRoom((current) => {
 			if (!current || current.state.outcome) return current;
 			const piece = current.state.pieces.find((item) => item.id === pieceId && item.alive && item.side === "you");
@@ -446,6 +461,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 										const lastMine = lastMove?.side === room?.side;
 										const isPendingFrom = pendingPiece?.col === col && pendingPiece.row === row;
 										const isPendingTo = pendingMove?.col === col && pendingMove.row === row;
+										const isArbiterTo = arbiterCell?.col === col && arbiterCell.row === row;
 								const isSelected = piece != null && piece.id === selected;
 								const glyph = piece?.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
 
@@ -480,8 +496,8 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 													: isLastFrom || isLastTo
 														? `${lastMine ? "border-[#8fae6e]" : "border-[#d98b73]"} bg-[rgba(143,174,110,0.12)]`
 														: (viewCol + viewRow) % 2 === 0
-														? "border-[#36513a] bg-[#22351f]"
-															: "border-[#2c432d] bg-[#162716]"
+														? "border-[#3d3425] bg-[#2a2418]"
+															: "border-[#2f271d] bg-[#181511]"
 										} ${piece?.side === "you" && myTurn ? "touch-none" : ""}`}
 									>
 										{piece ? (
@@ -498,11 +514,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 												{piece.side === "you" ? <CompactGlyph glyph={glyph} /> : null}
 											</span>
 										) : null}
-										{pendingMove?.capture && isPendingTo ? (
-											<span className="wr-arbiter-chip pointer-events-none absolute inset-x-1 bottom-1 z-[4] overflow-hidden rounded-[3px] border border-[rgba(201,168,93,0.45)] bg-[#0e1420]/90 py-0.5 text-center font-mono text-[7px] uppercase tracking-[0.12em] text-[var(--accent)]">
-												Arbiter
-											</span>
-										) : null}
+										{(pendingMove?.capture && isPendingTo) || isArbiterTo ? <ArbiterChip key={arbiterCell?.key} /> : null}
 										{piece?.side === "foe" ? <GuessBadge tag={tags[piece.id]} /> : null}
 									</button>
 								);
@@ -563,7 +575,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 								<span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#5b647a]">x clash</span>
 							</div>
 							<div className="mt-3">
-								<MoveLog plies={room?.state.plies ?? []} />
+								<MoveLog plies={[...(room?.state.plies ?? [])].reverse()} side={room?.side ?? "gold"} />
 							</div>
 						</Card>
 						<Card className="flex h-[min(52dvh,560px)] flex-col p-4">
