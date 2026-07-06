@@ -41,6 +41,18 @@
 		{
 			"pattern": "gogo.cjuy.dev",
 			"custom_domain": true
+		},
+		{
+			"pattern": "gogonline.cjuy.dev",
+			"custom_domain": true
+		},
+		{
+			"pattern": "gameofthegeneralsonline.cjuy.dev",
+			"custom_domain": true
+		},
+		{
+			"pattern": "game-of-the-generals-online.cjuy.dev",
+			"custom_domain": true
 		}
 	],
 	"d1_databases": [
