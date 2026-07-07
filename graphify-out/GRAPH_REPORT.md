@@ -1,16 +1,16 @@
 # Graph Report - Game-of-the-Generals-Online  (2026-07-07)
 
 ## Corpus Check
-- 45 files · ~54,866 words
+- 45 files · ~55,553 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 365 nodes · 584 edges · 23 communities (19 shown, 4 thin omitted)
+- 372 nodes · 603 edges · 23 communities (19 shown, 4 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `19c39e67`
+- Built from commit: `b7e7a4c1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -51,14 +51,14 @@
 ## Surprising Connections (you probably didn't know these)
 - `OnlineGameRoom()` --calls--> `parseLastMove()`  [EXTRACTED]
   src/components/play/game-room.tsx → src/components/play/board-view.tsx
+- `ownerOf()` --calls--> `oppositeSide()`  [EXTRACTED]
+  src/components/play/game-room.tsx → src/lib/game.ts
+- `undoReplayCapture()` --calls--> `battleLosers()`  [EXTRACTED]
+  src/components/play/game-room.tsx → src/lib/game.ts
 - `makeState()` --calls--> `makeSidePieces()`  [EXTRACTED]
   src/components/play/local-game-room.tsx → src/lib/game.ts
 - `POST()` --calls--> `addGuest()`  [EXTRACTED]
   src/app/api/rooms/[code]/join/route.ts → src/lib/game.ts
-- `POST()` --calls--> `findRoom()`  [EXTRACTED]
-  src/app/api/rooms/[code]/join/route.ts → src/lib/rooms.ts
-- `POST()` --calls--> `json()`  [EXTRACTED]
-  src/app/api/rooms/[code]/join/route.ts → src/lib/rooms.ts
 
 ## Import Cycles
 - None detected.
@@ -71,7 +71,7 @@ Nodes (41): boot(), collectProps(), compileAttr(), compileTemplate(), contentKey
 
 ### Community 1 - "Community 1"
 Cohesion: 0.09
-Nodes (45): GET(), POST(), gameMatches, gameRooms, POST(), addGuest(), addMessage(), applyMove() (+37 more)
+Nodes (47): GET(), POST(), gameMatches, gameRooms, POST(), addGuest(), addMessage(), applyMove() (+39 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.06
@@ -82,8 +82,8 @@ Cohesion: 0.05
 Nodes (36): dependencies, class-variance-authority, clsx, drizzle-orm, next, @opennextjs/cloudflare, @radix-ui/react-slot, react (+28 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.12
-Nodes (28): PlayerSide, PublicPiece, PublicRoom, ArbiterChip(), boardGlyphSize(), boardIndex(), CapturedGuessTiles(), CommandChain() (+20 more)
+Cohesion: 0.11
+Nodes (33): PlayerSide, PublicPiece, PublicRoom, ArbiterChip(), boardGlyphSize(), boardIndex(), CapturedGuessTiles(), CommandChain() (+25 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.10
@@ -130,7 +130,7 @@ Cohesion: 0.40
 Nodes (4): compat, __dirname, eslintConfig, __filename
 
 ## Knowledge Gaps
-- **144 isolated node(s):** `__filename`, `__dirname`, `compat`, `eslintConfig`, `nextConfig` (+139 more)
+- **145 isolated node(s):** `__filename`, `__dirname`, `compat`, `eslintConfig`, `nextConfig` (+140 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **4 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -138,16 +138,16 @@ Nodes (4): compat, __dirname, eslintConfig, __filename
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Button()` connect `Community 2` to `Community 4`?**
-  _High betweenness centrality (0.015) - this node is a cross-community bridge._
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
 - **Why does `Card()` connect `Community 2` to `Community 4`?**
   _High betweenness centrality (0.014) - this node is a cross-community bridge._
 - **Why does `CardTitle()` connect `Community 2` to `Community 4`?**
   _High betweenness centrality (0.014) - this node is a cross-community bridge._
 - **What connects `__filename`, `__dirname`, `compat` to the rest of the system?**
-  _144 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _145 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.06801346801346801 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.0942684766214178 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09084556254367575 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
   _Cohesion score 0.06431372549019608 - nodes in this community are weakly interconnected._
