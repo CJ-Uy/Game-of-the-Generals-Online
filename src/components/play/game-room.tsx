@@ -209,8 +209,6 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const [chatOpen, setChatOpen] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [syncState, setSyncState] = useState<"polling" | "live" | "reconnecting">("polling");
-	const [reviewBoard, setReviewBoard] = useState(false);
-	const [reviewReveal, setReviewReveal] = useState(false);
 	const [replayStep, setReplayStep] = useState<number | null>(null);
 	const [pendingMove, setPendingMove] = useState<{ pieceId: number; col: number; row: number; capture: boolean } | null>(null);
 	const [arbiterCell, setArbiterCell] = useState<{ col: number; row: number; key: number } | null>(null);
@@ -327,8 +325,6 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 			}
 			animateBoard(() => setRoom(payload as PublicRoom));
 			setPendingMove(null);
-			setReviewBoard(false);
-			setReviewReveal(false);
 			setReplayStep(null);
 			setSelected(null);
 			setError("");
@@ -460,7 +456,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const bySeniority = (a: PublicPiece, b: PublicPiece) => (rankIndex.get(a.rank ?? "FLG") ?? 0) - (rankIndex.get(b.rank ?? "FLG") ?? 0);
 	const myFallen = boardPieces.filter((piece) => piece.side === "you" && !piece.alive).sort(bySeniority);
 	const foeFallen = boardPieces.filter((piece) => piece.side === "foe" && !piece.alive);
-	const revealFoe = !!room?.state.outcome && (reviewReveal || replayActive);
+	const revealFoe = !!room?.state.outcome || replayActive;
 	const statusText = !room
 		? "Loading room"
 		: room.status === "waiting"
@@ -524,17 +520,14 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 							{statusText}
 						</span>
 						<span className="text-[#8a93a8]">
-							{syncLabel} · {room?.side === "gold" ? "Gold" : "Slate"} · Fallen {myFallen.length} · Taken {foeFallen.length}
+							{room?.state.outcome ? room.state.outcome.note : `${syncLabel} · ${room?.side === "gold" ? "Gold" : "Slate"} · Fallen ${myFallen.length} · Taken ${foeFallen.length}`}
 						</span>
 					</div>
 					{error ? <div className="mb-3 rounded-[5px] border border-[#7c3f36] bg-[#2b1716] px-3 py-2 text-sm text-[#d98b73]">{error}</div> : null}
 
-					{room?.state.outcome && reviewBoard ? (
+					{room?.state.outcome ? (
 						<div className="mb-3 rounded-[6px] border border-[#1c2740] bg-[#0b101b] p-3">
 							<div className="flex flex-wrap items-center gap-2">
-								<Button variant="outline" size="sm" onClick={() => setReviewReveal((value) => !value)}>
-									{reviewReveal ? "Hide enemy" : "Reveal enemy"}
-								</Button>
 								<Button variant="outline" size="sm" disabled={!replayFrames.length} onClick={() => animateBoard(() => setReplayStep((step) => (step == null ? 0 : null)))}>
 									{replayActive ? "Exit replay" : "Replay"}
 								</Button>
@@ -648,7 +641,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 											</span>
 										) : null}
 										{(pendingMove?.capture && isPendingTo) || isArbiterTo ? <ArbiterChip key={arbiterCell?.key} /> : null}
-										{piece?.side === "foe" && !isClashTo ? <GuessBadge tag={tags[piece.id]} /> : null}
+										{piece?.side === "foe" && !isClashTo && !revealFoe ? <GuessBadge tag={tags[piece.id]} /> : null}
 									</button>
 								);
 									})}
@@ -769,7 +762,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 			{tagTarget != null ? (
 				<div className="fixed inset-0 z-[80] flex items-end bg-[#05070c]/65 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4" onClick={() => setTagTarget(null)}>
 					<div
-						className="max-h-[78dvh] w-full overflow-auto rounded-t-[10px] border border-[#2c3a55] bg-[#0e1420] p-4 shadow-[0_-18px_80px_rgba(0,0,0,0.65)] sm:max-w-xl sm:rounded-[10px]"
+						className="wr-rise max-h-[78dvh] w-full overflow-auto rounded-t-[10px] border border-[#2c3a55] bg-[#0e1420] p-4 shadow-[0_-18px_80px_rgba(0,0,0,0.65)] sm:max-w-xl sm:rounded-[10px]"
 						onClick={(event) => event.stopPropagation()}
 					>
 						<div className="mb-4 flex items-center justify-between gap-3">
@@ -783,29 +776,17 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 						</div>
 
 						<GuessPicker
+							selected={tags[tagTarget]}
 							onPick={(tag) => {
-								setTags((current) => ({ ...current, [tagTarget]: tag }));
+								setTags((current) => {
+									const next = { ...current };
+									if (next[tagTarget] === tag) delete next[tagTarget];
+									else next[tagTarget] = tag;
+									return next;
+								});
 								setTagTarget(null);
 							}}
 						/>
-					</div>
-				</div>
-			) : null}
-
-			{room?.state.outcome && !reviewBoard ? (
-				<div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#05070c]/80 p-4 backdrop-blur-sm">
-					<div className="wr-rise w-full max-w-md rounded-[10px] border border-[#2c3a55] bg-[#0e1420] p-8 text-center shadow-[0_18px_80px_rgba(0,0,0,0.65)]">
-						<div className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--accent)]">Battle report</div>
-						<div className="mt-2 font-display text-6xl font-extrabold uppercase leading-none">{statusText}</div>
-						<p className="mt-3 text-sm leading-6 text-[#8a93a8]">{room.state.outcome.note}</p>
-						<div className="mt-6 flex gap-3">
-							<Button className="flex-1" onClick={() => setReviewBoard(true)}>
-								View board
-							</Button>
-							<Button asChild className="flex-1" variant="outline">
-								<Link href="/play">New room</Link>
-							</Button>
-						</div>
 					</div>
 				</div>
 			) : null}

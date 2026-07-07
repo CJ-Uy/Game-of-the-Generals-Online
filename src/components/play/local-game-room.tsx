@@ -73,7 +73,6 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 	const [error, setError] = useState("");
 	const [botLevel, setBotLevel] = useState("Sergeant");
 	const [botThinking, setBotThinking] = useState(false);
-	const [reviewBoard, setReviewBoard] = useState(false);
 	const [arbiterCell, setArbiterCell] = useState<{ col: number; row: number; key: number } | null>(null);
 	const [clashPreview, setClashPreview] = useState<{ col: number; row: number; attacker: PublicPiece; defender: PublicPiece } | null>(null);
 	const arbiterTimer = useRef<number | null>(null);
@@ -143,7 +142,6 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 			const next = applyMove(state, viewSide, pieceId, col, row);
 			animateBoard(() => setState(next));
 			setVersion((current) => current + 1);
-			setReviewBoard(false);
 			setSelected(null);
 			setError("");
 			if (mode === "local" && !next.outcome) setHandoff(next.turn);
@@ -303,7 +301,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 							{statusText}
 						</span>
 						<span className="text-[#8a93a8]">
-							{viewSide === "gold" ? "Gold" : "Slate"} · Fallen {myFallen.length} · Taken {foeFallen.length}
+							{room.state.outcome ? room.state.outcome.note : `${viewSide === "gold" ? "Gold" : "Slate"} · Fallen ${myFallen.length} · Taken ${foeFallen.length}`}
 						</span>
 					</div>
 					{error ? <div className="mb-3 rounded-[5px] border border-[#7c3f36] bg-[#2b1716] px-3 py-2 text-sm text-[#d98b73]">{error}</div> : null}
@@ -326,7 +324,8 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 										const lastMine = lastMove?.side === viewSide;
 										const isArbiterTo = arbiterCell?.col === col && arbiterCell.row === row;
 										const isClashTo = clashPreview?.col === col && clashPreview.row === row;
-								const glyph = piece?.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
+								const showRank = piece?.side === "you" || !!room.state.outcome;
+								const glyph = showRank && piece?.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
 
 								return (
 									<button
@@ -371,14 +370,16 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 														? `border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75 ${boardGlyphSize(glyph)} ${
 																piece.id === selected || draggingPiece === piece.id ? "ring-2 ring-[var(--accent)]" : ""
 															}`
-														: "border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257]"
+														: showRank
+															? `border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257] text-[#d8e3f4] ${boardGlyphSize(glyph)}`
+															: "border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257]"
 												}`}
 											>
-												{piece.side === "you" ? <CompactGlyph glyph={glyph} /> : null}
+												{showRank && glyph ? <CompactGlyph glyph={glyph} /> : null}
 											</span>
 										) : null}
 										{isArbiterTo ? <ArbiterChip key={arbiterCell?.key} /> : null}
-										{piece?.side === "foe" && !isClashTo ? <GuessBadge tag={tags[piece.id]} /> : null}
+										{piece?.side === "foe" && !isClashTo && !room.state.outcome ? <GuessBadge tag={tags[piece.id]} /> : null}
 									</button>
 								);
 									})}
@@ -450,7 +451,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 
 			{tagTarget != null ? (
 				<div className="fixed inset-0 z-[80] flex items-end bg-[#05070c]/65 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4" onClick={() => setTagTarget(null)}>
-					<div className="max-h-[78dvh] w-full overflow-auto rounded-t-[10px] border border-[#2c3a55] bg-[#0e1420] p-4 sm:max-w-xl sm:rounded-[10px]" onClick={(event) => event.stopPropagation()}>
+					<div className="wr-rise max-h-[78dvh] w-full overflow-auto rounded-t-[10px] border border-[#2c3a55] bg-[#0e1420] p-4 sm:max-w-xl sm:rounded-[10px]" onClick={(event) => event.stopPropagation()}>
 						<div className="mb-4 flex items-center justify-between gap-3">
 							<div>
 								<div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--accent)]">Tag enemy piece</div>
@@ -459,25 +460,17 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 							<Button variant="ghost" size="sm" onClick={() => setTagTarget(null)}>Close</Button>
 						</div>
 						<GuessPicker
+							selected={tags[tagTarget]}
 							onPick={(tag) => {
-								setTags((current) => ({ ...current, [tagTarget]: tag }));
+								setTags((current) => {
+									const next = { ...current };
+									if (next[tagTarget] === tag) delete next[tagTarget];
+									else next[tagTarget] = tag;
+									return next;
+								});
 								setTagTarget(null);
 							}}
 						/>
-					</div>
-				</div>
-			) : null}
-
-			{room.state.outcome && !reviewBoard ? (
-				<div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#05070c]/80 p-4 backdrop-blur-sm">
-					<div className="w-full max-w-md rounded-[10px] border border-[#2c3a55] bg-[#0e1420] p-8 text-center">
-						<div className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--accent)]">Battle report</div>
-						<div className="mt-2 font-display text-6xl font-extrabold uppercase leading-none">{statusText}</div>
-						<p className="mt-3 text-sm leading-6 text-[#8a93a8]">{room.state.outcome.note}</p>
-						<div className="mt-6 flex gap-3">
-							<Button className="flex-1" onClick={() => setReviewBoard(true)}>View board</Button>
-							<Button asChild className="flex-1" variant="outline"><Link href="/play">New match</Link></Button>
-						</div>
 					</div>
 				</div>
 			) : null}

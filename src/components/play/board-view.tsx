@@ -55,7 +55,7 @@ export function GuessBadge({ tag }: { tag?: GuessTag }) {
 	);
 }
 
-export function GuessPicker({ onPick }: { onPick: (tag: GuessTag) => void }) {
+export function GuessPicker({ onPick, selected }: { onPick: (tag: GuessTag) => void; selected?: GuessTag }) {
 	const [modifier, setModifier] = useState<GuessModifier | "">("");
 
 	return (
@@ -79,22 +79,28 @@ export function GuessPicker({ onPick }: { onPick: (tag: GuessTag) => void }) {
 				))}
 			</div>
 			<div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-				{ranks.map((rank) => (
-					<button
-						key={rank.key}
-						type="button"
-						onClick={() => onPick(`${modifier}${rank.key}` as GuessTag)}
-						className="rounded-[5px] border border-[#2c3a55] bg-[#121b2c] p-3 text-left transition-colors active:scale-[0.98] hover:border-[var(--accent)]"
-					>
-						<div className="flex items-center gap-1 font-bold leading-none text-[var(--accent)]">
-							{modifier ? <span className="text-xs">{modifier}</span> : null}
-							<span className={boardGlyphSize(rank.glyph)}>
-								<CompactGlyph glyph={rank.glyph} />
-							</span>
-						</div>
-						<div className="mt-2 truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8]">{rank.name}</div>
-					</button>
-				))}
+				{ranks.map((rank) => {
+					const tag = `${modifier}${rank.key}` as GuessTag;
+					const active = selected === tag;
+					return (
+						<button
+							key={rank.key}
+							type="button"
+							onClick={() => onPick(tag)}
+							className={`rounded-[5px] border p-3 text-left transition-colors active:scale-[0.98] hover:border-[var(--accent)] ${
+								active ? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)]" : "border-[#2c3a55] bg-[#121b2c]"
+							}`}
+						>
+							<div className="flex items-center gap-1 font-bold leading-none text-[var(--accent)]">
+								{modifier ? <span className="text-xs">{modifier}</span> : null}
+								<span className={boardGlyphSize(rank.glyph)}>
+									<CompactGlyph glyph={rank.glyph} />
+								</span>
+							</div>
+							<div className="mt-2 truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8]">{rank.name}</div>
+						</button>
+					);
+				})}
 			</div>
 		</>
 	);

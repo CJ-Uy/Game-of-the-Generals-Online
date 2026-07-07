@@ -1977,7 +1977,7 @@
       "label": "PieceClashPreview()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L103",
+      "source_location": "L109",
       "_origin": "ast",
       "id": "play_board_view_piececlashpreview",
       "community": 4,
@@ -1987,7 +1987,7 @@
       "label": "PieceFace()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L114",
+      "source_location": "L120",
       "_origin": "ast",
       "id": "play_board_view_pieceface",
       "community": 4,
@@ -1997,7 +1997,7 @@
       "label": "ArbiterChip()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L129",
+      "source_location": "L135",
       "_origin": "ast",
       "id": "play_board_view_arbiterchip",
       "community": 4,
@@ -2007,7 +2007,7 @@
       "label": "boardIndex()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L137",
+      "source_location": "L143",
       "_origin": "ast",
       "id": "play_board_view_boardindex",
       "community": 4,
@@ -2017,7 +2017,7 @@
       "label": "toBoardCell()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L141",
+      "source_location": "L147",
       "_origin": "ast",
       "id": "play_board_view_toboardcell",
       "community": 4,
@@ -2027,7 +2027,7 @@
       "label": "toViewCell()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L145",
+      "source_location": "L151",
       "_origin": "ast",
       "id": "play_board_view_toviewcell",
       "community": 4,
@@ -2037,7 +2037,7 @@
       "label": "viewSquare()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L149",
+      "source_location": "L155",
       "_origin": "ast",
       "id": "play_board_view_viewsquare",
       "community": 4,
@@ -2047,7 +2047,7 @@
       "label": "LastMove",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L154",
+      "source_location": "L160",
       "_origin": "ast",
       "id": "play_board_view_lastmove",
       "community": 4,
@@ -2057,7 +2057,7 @@
       "label": "parseLastMove()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L160",
+      "source_location": "L166",
       "_origin": "ast",
       "id": "play_board_view_parselastmove",
       "community": 4,
@@ -2067,7 +2067,7 @@
       "label": "formatPlyForView()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L171",
+      "source_location": "L177",
       "_origin": "ast",
       "id": "play_board_view_formatplyforview",
       "community": 4,
@@ -2077,7 +2077,7 @@
       "label": "CommandChain()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L180",
+      "source_location": "L186",
       "_origin": "ast",
       "id": "play_board_view_commandchain",
       "community": 4,
@@ -2087,7 +2087,7 @@
       "label": "CapturedGuessTiles()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L223",
+      "source_location": "L229",
       "_origin": "ast",
       "id": "play_board_view_capturedguesstiles",
       "community": 4,
@@ -2097,7 +2097,7 @@
       "label": "rankName()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L250",
+      "source_location": "L256",
       "_origin": "ast",
       "id": "play_board_view_rankname",
       "community": 4,
@@ -5898,9 +5898,9 @@
       "source_file": "src/app/api/rooms/route.ts",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "rooms_route",
-      "target": "lib_game_playerside",
-      "confidence_score": 1.0
+      "target": "lib_game_playerside"
     },
     {
       "relation": "imports_from",
@@ -7680,9 +7680,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room",
-      "target": "lib_game_battlelosers",
-      "confidence_score": 1.0
+      "target": "lib_game_battlelosers"
     },
     {
       "relation": "imports",
@@ -7691,9 +7691,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room",
-      "target": "lib_game_oppositeside",
-      "confidence_score": 1.0
+      "target": "lib_game_oppositeside"
     },
     {
       "relation": "imports",
@@ -7702,9 +7702,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room",
-      "target": "lib_game_playerside",
-      "confidence_score": 1.0
+      "target": "lib_game_playerside"
     },
     {
       "relation": "imports",
@@ -7766,9 +7766,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L101",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room",
-      "target": "play_game_room_buildreplayframes",
-      "confidence_score": 1.0
+      "target": "play_game_room_buildreplayframes"
     },
     {
       "relation": "contains",
@@ -7786,9 +7786,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L55",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room",
-      "target": "play_game_room_clonepieces",
-      "confidence_score": 1.0
+      "target": "play_game_room_clonepieces"
     },
     {
       "relation": "contains",
@@ -7826,9 +7826,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L59",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room",
-      "target": "play_game_room_ownerof",
-      "confidence_score": 1.0
+      "target": "play_game_room_ownerof"
     },
     {
       "relation": "contains",
@@ -7836,9 +7836,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L63",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room",
-      "target": "play_game_room_parsereplayply",
-      "confidence_score": 1.0
+      "target": "play_game_room_parsereplayply"
     },
     {
       "relation": "contains",
@@ -7846,9 +7846,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L53",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room",
-      "target": "play_game_room_replayframe",
-      "confidence_score": 1.0
+      "target": "play_game_room_replayframe"
     },
     {
       "relation": "contains",
@@ -7856,9 +7856,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L75",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room",
-      "target": "play_game_room_undoreplaycapture",
-      "confidence_score": 1.0
+      "target": "play_game_room_undoreplaycapture"
     },
     {
       "relation": "imports_from",
@@ -7944,9 +7944,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L103",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room_buildreplayframes",
-      "target": "play_game_room_clonepieces",
-      "confidence_score": 1.0
+      "target": "play_game_room_clonepieces"
     },
     {
       "relation": "calls",
@@ -7966,9 +7966,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L107",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room_buildreplayframes",
-      "target": "play_game_room_parsereplayply",
-      "confidence_score": 1.0
+      "target": "play_game_room_parsereplayply"
     },
     {
       "relation": "calls",
@@ -7977,9 +7977,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L110",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room_buildreplayframes",
-      "target": "play_game_room_undoreplaycapture",
-      "confidence_score": 1.0
+      "target": "play_game_room_undoreplaycapture"
     },
     {
       "relation": "calls",
@@ -8631,9 +8631,9 @@
       "source_file": "src/lib/game.ts",
       "source_location": "L107",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_game",
-      "target": "lib_game_oppositeside",
-      "confidence_score": 1.0
+      "target": "lib_game_oppositeside"
     },
     {
       "relation": "contains",
@@ -8856,9 +8856,9 @@
       "source_file": "src/lib/game.ts",
       "source_location": "L179",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_game_addguest",
-      "target": "lib_game_oppositeside",
-      "confidence_score": 1.0
+      "target": "lib_game_oppositeside"
     },
     {
       "relation": "calls",
@@ -8867,9 +8867,9 @@
       "source_file": "src/lib/game.ts",
       "source_location": "L113",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_game_sidefromtoken",
-      "target": "lib_game_oppositeside",
-      "confidence_score": 1.0
+      "target": "lib_game_oppositeside"
     },
     {
       "relation": "imports",
@@ -9198,9 +9198,9 @@
       "source_file": "src/lib/rooms.ts",
       "source_location": "L59",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_rooms_sidefor",
-      "target": "lib_rooms_parsestate",
-      "confidence_score": 1.0
+      "target": "lib_rooms_parsestate"
     },
     {
       "relation": "contains",
@@ -10027,5 +10027,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "b7e7a4c1041356d6503782c0542525f77b637239"
+  "built_at_commit": "672e62445f6bd04f10c21f09fb1462a3cef3cd9d"
 }

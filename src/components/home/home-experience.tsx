@@ -307,10 +307,6 @@ export function HomeExperience() {
 							Tutorial
 						</Button>
 					</div>
-					<div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[#8fae6e]">
-						<span className="h-[7px] w-[7px] rounded-full bg-[#8fae6e] [animation:wr-pulse_1.6s_ease_infinite]" />
-						1,204 commanders online · No account needed
-					</div>
 				</div>
 			</section>
 
