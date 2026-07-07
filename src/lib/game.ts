@@ -43,6 +43,7 @@ export type RoomMessage = {
 };
 
 export type RoomState = {
+	hostSide?: PlayerSide;
 	pieces: GamePiece[];
 	turn: PlayerSide;
 	plies: string[];
@@ -103,9 +104,13 @@ export function makeRandomLoadout(): Record<number, string> {
 	return Object.fromEntries(pieces.map((piece, index) => [cells[index], piece]));
 }
 
-export function sideFromToken(hostToken: string, guestToken: string | null, token: string): PlayerSide | null {
-	if (token === hostToken) return "gold";
-	if (guestToken && token === guestToken) return "slate";
+export function oppositeSide(side: PlayerSide): PlayerSide {
+	return side === "gold" ? "slate" : "gold";
+}
+
+export function sideFromToken(hostToken: string, guestToken: string | null, token: string, hostSide: PlayerSide = "gold"): PlayerSide | null {
+	if (token === hostToken) return hostSide;
+	if (guestToken && token === guestToken) return oppositeSide(hostSide);
 	return null;
 }
 
@@ -156,10 +161,11 @@ export function makeSidePieces(side: PlayerSide, input: unknown, offset = side =
 	}));
 }
 
-export function makeWaitingState(goldLoadout: unknown): RoomState | null {
-	const pieces = makeSidePieces("gold", goldLoadout);
+export function makeWaitingState(hostLoadout: unknown, hostSide: PlayerSide = "gold"): RoomState | null {
+	const pieces = makeSidePieces(hostSide, hostLoadout);
 	if (!pieces) return null;
 	return {
+		hostSide,
 		pieces,
 		turn: "gold",
 		plies: [],
@@ -169,9 +175,10 @@ export function makeWaitingState(goldLoadout: unknown): RoomState | null {
 	};
 }
 
-export function addGuest(state: RoomState, slateLoadout: unknown): RoomState | null {
-	if (state.pieces.some((piece) => piece.owner === "slate")) return null;
-	const pieces = makeSidePieces("slate", slateLoadout);
+export function addGuest(state: RoomState, guestLoadout: unknown): RoomState | null {
+	const guestSide = oppositeSide(state.hostSide ?? "gold");
+	if (state.pieces.some((piece) => piece.owner === guestSide)) return null;
+	const pieces = makeSidePieces(guestSide, guestLoadout);
 	if (!pieces) return null;
 	return addMessage({ ...state, pieces: [...state.pieces, ...pieces] }, "sys", "Both armies are deployed. Gold moves first.");
 }

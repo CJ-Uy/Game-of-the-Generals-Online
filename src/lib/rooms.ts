@@ -50,12 +50,14 @@ export async function saveRoom(row: RoomRow, state: RoomState, status = row.stat
 }
 
 export function publicRoom(row: RoomRow, token: string): PublicRoom | null {
-	const side = sideFromToken(row.hostToken, row.guestToken, token);
-	return side ? toPublicRoom(row.code, row.status, row.version, side, parseState(row)) : null;
+	const state = parseState(row);
+	const side = sideFromToken(row.hostToken, row.guestToken, token, state.hostSide ?? "gold");
+	return side ? toPublicRoom(row.code, row.status, row.version, side, state) : null;
 }
 
 export function sideFor(row: RoomRow, token: string): PlayerSide | null {
-	return sideFromToken(row.hostToken, row.guestToken, token);
+	const state = parseState(row);
+	return sideFromToken(row.hostToken, row.guestToken, token, state.hostSide ?? "gold");
 }
 
 export function json(data: unknown, status = 200) {

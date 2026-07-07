@@ -24,7 +24,7 @@ import {
 	toBoardCell,
 	viewSquare,
 } from "@/components/play/board-view";
-import { COLS, ROWS, square, type PublicPiece, type PublicRoom, type RoomMessage } from "@/lib/game";
+import { COLS, FILES, ROWS, battleLosers, oppositeSide, square, type PlayerSide, type PublicPiece, type PublicRoom, type RoomMessage } from "@/lib/game";
 
 function animateBoard(update: () => void) {
 	const viewTransition = (document as Document & { startViewTransition?: (callback: () => void) => void }).startViewTransition;
@@ -49,6 +49,77 @@ function MoveLog({ plies, side }: { plies: string[]; side: PublicRoom["side"] })
 	);
 }
 
+
+type ReplayFrame = { label: string; pieces: PublicPiece[] };
+
+function clonePieces(pieces: PublicPiece[]) {
+	return pieces.map((piece) => ({ ...piece }));
+}
+
+function ownerOf(piece: PublicPiece, viewerSide: PlayerSide): PlayerSide {
+	return piece.side === "you" ? viewerSide : oppositeSide(viewerSide);
+}
+
+function parseReplayPly(ply: string) {
+	const match = /^([GS]) ([a-i])([1-8])([-x])([a-i])([1-8])$/.exec(ply);
+	if (!match) return null;
+	const [, player, fromFile, fromRank, action, toFile, toRank] = match;
+	return {
+		side: player === "G" ? "gold" as const : "slate" as const,
+		capture: action === "x",
+		from: { col: FILES.indexOf(fromFile), row: ROWS - Number(fromRank) },
+		to: { col: FILES.indexOf(toFile), row: ROWS - Number(toRank) },
+	};
+}
+
+function undoReplayCapture(pieces: PublicPiece[], viewerSide: PlayerSide, side: PlayerSide, from: { col: number; row: number }, to: { col: number; row: number }) {
+	const attackers = pieces.filter((piece) => ownerOf(piece, viewerSide) === side && piece.rank);
+	const defenders = pieces.filter((piece) => ownerOf(piece, viewerSide) !== side && piece.rank && piece.col === to.col && piece.row === to.row);
+
+	for (const attacker of attackers) {
+		for (const defender of defenders) {
+			const losers = battleLosers(attacker.rank!, defender.rank!);
+			const attackerAlive = !losers.includes("att");
+			const defenderAlive = !losers.includes("def");
+			const attackerMatches = attackerAlive
+				? attacker.alive && attacker.col === to.col && attacker.row === to.row
+				: !attacker.alive && attacker.col === from.col && attacker.row === from.row;
+			const defenderMatches = defenderAlive ? defender.alive : !defender.alive;
+			if (!attackerMatches || !defenderMatches) continue;
+
+			attacker.alive = true;
+			attacker.col = from.col;
+			attacker.row = from.row;
+			defender.alive = true;
+			defender.col = to.col;
+			defender.row = to.row;
+			return;
+		}
+	}
+}
+
+function buildReplayFrames(room: PublicRoom | null): ReplayFrame[] {
+	if (!room?.state.outcome || room.state.pieces.some((piece) => !piece.rank)) return [];
+	const pieces = clonePieces(room.state.pieces);
+	const frames: ReplayFrame[] = [{ label: `Final (${room.state.plies.length})`, pieces: clonePieces(pieces) }];
+
+	for (let index = room.state.plies.length - 1; index >= 0; index--) {
+		const ply = parseReplayPly(room.state.plies[index]);
+		if (!ply) continue;
+		if (ply.capture) {
+			undoReplayCapture(pieces, room.side, ply.side, ply.from, ply.to);
+		} else {
+			const mover = pieces.find((piece) => piece.alive && ownerOf(piece, room.side) === ply.side && piece.col === ply.to.col && piece.row === ply.to.row);
+			if (mover) {
+				mover.col = ply.from.col;
+				mover.row = ply.from.row;
+			}
+		}
+		frames.push({ label: index === 0 ? "Setup" : `After ${index}`, pieces: clonePieces(pieces) });
+	}
+
+	return frames.reverse();
+}
 function ChatPanel({
 	messages,
 	side,
@@ -139,6 +210,8 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const [busy, setBusy] = useState(false);
 	const [syncState, setSyncState] = useState<"polling" | "live" | "reconnecting">("polling");
 	const [reviewBoard, setReviewBoard] = useState(false);
+	const [reviewReveal, setReviewReveal] = useState(false);
+	const [replayStep, setReplayStep] = useState<number | null>(null);
 	const [pendingMove, setPendingMove] = useState<{ pieceId: number; col: number; row: number; capture: boolean } | null>(null);
 	const [arbiterCell, setArbiterCell] = useState<{ col: number; row: number; key: number } | null>(null);
 	const [clashPreview, setClashPreview] = useState<{ col: number; row: number; attacker: PublicPiece; defender: PublicPiece } | null>(null);
@@ -255,6 +328,8 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 			animateBoard(() => setRoom(payload as PublicRoom));
 			setPendingMove(null);
 			setReviewBoard(false);
+			setReviewReveal(false);
+			setReplayStep(null);
 			setSelected(null);
 			setError("");
 		} catch (caught) {
@@ -274,16 +349,21 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	};
 
 	const pieces = useMemo(() => room?.state.pieces ?? [], [room]);
+	const replayFrames = useMemo(() => buildReplayFrames(room), [room]);
+	const replayFrame = replayStep == null ? null : replayFrames[replayStep] ?? null;
+	const replayActive = replayFrame != null;
+	const boardPieces = replayFrame?.pieces ?? pieces;
 	const byCell = useMemo(() => {
 		const next = new Map<number, PublicPiece>();
-		for (const piece of pieces) if (piece.alive) next.set(piece.row * COLS + piece.col, piece);
+		for (const piece of boardPieces) if (piece.alive) next.set(piece.row * COLS + piece.col, piece);
 		return next;
-	}, [pieces]);
+	}, [boardPieces]);
 
 	const myTurn = room?.status === "active" && !room.state.outcome && room.state.turn === room.side;
-	const sel = selected == null ? null : pieces.find((piece) => piece.id === selected && piece.alive);
-	const lastMove = parseLastMove(room?.state.plies ?? []);
-	const pendingPiece = pendingMove == null ? null : pieces.find((piece) => piece.id === pendingMove.pieceId);
+	const sel = selected == null ? null : boardPieces.find((piece) => piece.id === selected && piece.alive);
+	const activePlies = replayActive ? (room?.state.plies.slice(0, replayStep ?? 0) ?? []) : (room?.state.plies ?? []);
+	const lastMove = parseLastMove(activePlies);
+	const pendingPiece = pendingMove == null ? null : boardPieces.find((piece) => piece.id === pendingMove.pieceId);
 	const targets = new Set<number>();
 	if (sel && myTurn) {
 		for (const [dc, dr] of [
@@ -378,8 +458,9 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	};
 
 	const bySeniority = (a: PublicPiece, b: PublicPiece) => (rankIndex.get(a.rank ?? "FLG") ?? 0) - (rankIndex.get(b.rank ?? "FLG") ?? 0);
-	const myFallen = pieces.filter((piece) => piece.side === "you" && !piece.alive).sort(bySeniority);
-	const foeFallen = pieces.filter((piece) => piece.side === "foe" && !piece.alive);
+	const myFallen = boardPieces.filter((piece) => piece.side === "you" && !piece.alive).sort(bySeniority);
+	const foeFallen = boardPieces.filter((piece) => piece.side === "foe" && !piece.alive);
+	const revealFoe = !!room?.state.outcome && (reviewReveal || replayActive);
 	const statusText = !room
 		? "Loading room"
 		: room.status === "waiting"
@@ -448,12 +529,52 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 					</div>
 					{error ? <div className="mb-3 rounded-[5px] border border-[#7c3f36] bg-[#2b1716] px-3 py-2 text-sm text-[#d98b73]">{error}</div> : null}
 
+					{room?.state.outcome && reviewBoard ? (
+						<div className="mb-3 rounded-[6px] border border-[#1c2740] bg-[#0b101b] p-3">
+							<div className="flex flex-wrap items-center gap-2">
+								<Button variant="outline" size="sm" onClick={() => setReviewReveal((value) => !value)}>
+									{reviewReveal ? "Hide enemy" : "Reveal enemy"}
+								</Button>
+								<Button variant="outline" size="sm" disabled={!replayFrames.length} onClick={() => animateBoard(() => setReplayStep((step) => (step == null ? 0 : null)))}>
+									{replayActive ? "Exit replay" : "Replay"}
+								</Button>
+								{replayActive ? <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#8a93a8]">{replayFrame.label}</span> : null}
+							</div>
+							{replayActive ? (
+								<div className="mt-3 flex items-center gap-2">
+									<Button variant="ghost" size="sm" onClick={() => animateBoard(() => setReplayStep((step) => Math.max(0, (step ?? 0) - 1)))}>
+										Prev
+									</Button>
+									<input
+										className="min-w-0 flex-1 accent-[#c9a85d]"
+										type="range"
+										min={0}
+										max={Math.max(0, replayFrames.length - 1)}
+										value={replayStep ?? 0}
+										onChange={(event) => animateBoard(() => setReplayStep(Number(event.target.value)))}
+									/>
+									<Button variant="ghost" size="sm" onClick={() => animateBoard(() => setReplayStep((step) => Math.min(replayFrames.length - 1, (step ?? 0) + 1)))}>
+										Next
+									</Button>
+								</div>
+							) : null}
+						</div>
+					) : null}
+
 					<div className="rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-2 sm:p-3">
 						<div className="mb-2 flex items-center justify-between px-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[#44506b]">
 							<span>{room?.side === "slate" ? "Gold line" : "Slate line"}</span>
 							<span>tap an enemy piece to tag it</span>
 						</div>
-						<div className="grid grid-cols-[1.25rem_repeat(9,minmax(0,1fr))] gap-1">
+						<div className="relative grid grid-cols-[1.25rem_repeat(9,minmax(0,1fr))] gap-1">
+							{room?.status === "waiting" ? (
+								<div className="pointer-events-none absolute left-6 right-0 top-[12%] z-20 flex justify-center">
+									<div className="rounded-[6px] border border-[rgba(201,168,93,0.55)] bg-[#0e1420]/95 px-4 py-2 text-center shadow-[0_12px_36px_rgba(0,0,0,0.45)]">
+										<div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#8a93a8]">Enemy joins with</div>
+										<div className="font-mono text-2xl font-semibold tracking-[0.22em] text-[var(--accent)]">{code}</div>
+									</div>
+								</div>
+							) : null}
 							{Array.from({ length: ROWS }).map((_, viewRow) => (
 								<Fragment key={viewRow}>
 									<div className="flex items-center justify-center font-mono text-[9px] text-[#5b647a]">{viewSquare(room?.side ?? "gold", 0, viewRow).slice(1)}</div>
@@ -469,8 +590,9 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 										const isPendingTo = pendingMove?.col === col && pendingMove.row === row;
 										const isArbiterTo = arbiterCell?.col === col && arbiterCell.row === row;
 										const isClashTo = clashPreview?.col === col && clashPreview.row === row;
-								const isSelected = piece != null && piece.id === selected;
-								const glyph = piece?.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
+										const isSelected = piece != null && piece.id === selected;
+										const showRank = piece?.side === "you" || revealFoe;
+										const glyph = showRank && piece?.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
 
 								return (
 									<button
@@ -517,10 +639,12 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 														? `border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75 ${boardGlyphSize(glyph)} ${
 																isSelected || draggingPiece === piece.id ? "ring-2 ring-[var(--accent)]" : ""
 															}`
-														: "border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257]"
+														: revealFoe
+													? `border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257] text-[#d8e3f4] ${boardGlyphSize(glyph)}`
+													: "border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257]"
 												}`}
 											>
-												{piece.side === "you" ? <CompactGlyph glyph={glyph} /> : null}
+												{showRank && glyph ? <CompactGlyph glyph={glyph} /> : null}
 											</span>
 										) : null}
 										{(pendingMove?.capture && isPendingTo) || isArbiterTo ? <ArbiterChip key={arbiterCell?.key} /> : null}

@@ -44,10 +44,12 @@ const code = created.payload.room.code;
 const joined = await api(`/api/rooms/${code}/join`, { loadout });
 assert.equal(joined.response.status, 200, JSON.stringify(joined.payload));
 assert.equal(joined.payload.room.status, "active");
+assert.match(created.payload.room.side, /^(gold|slate)$/);
 
+const goldToken = created.payload.room.side === "gold" ? created.payload.token : joined.payload.token;
 const firstVersion = joined.payload.room.version;
 const moved = await api(`/api/rooms/${code}`, {
-	token: created.payload.token,
+	token: goldToken,
 	action: "move",
 	pieceId: 0,
 	col: 0,
@@ -59,7 +61,7 @@ assert.equal(moved.payload.version, firstVersion + 1);
 assert.equal(moved.payload.state.plies.at(-1), "G a3-a4");
 
 const stale = await api(`/api/rooms/${code}`, {
-	token: created.payload.token,
+	token: goldToken,
 	action: "move",
 	pieceId: 0,
 	col: 0,
@@ -68,5 +70,4 @@ const stale = await api(`/api/rooms/${code}`, {
 });
 assert.equal(stale.response.status, 409, JSON.stringify(stale.payload));
 assert.equal(stale.payload.room.version, moved.payload.version);
-
 console.log(`room sync ok: ${code}`);
