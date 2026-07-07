@@ -1,7 +1,7 @@
 # Graph Report - Game-of-the-Generals-Online  (2026-07-07)
 
 ## Corpus Check
-- 45 files · ~95,351 words
+- 45 files · ~54,866 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a129b61b`
+- Built from commit: `19c39e67`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

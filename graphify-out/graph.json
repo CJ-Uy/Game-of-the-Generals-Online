@@ -2087,7 +2087,7 @@
       "label": "CapturedGuessTiles()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L226",
+      "source_location": "L223",
       "_origin": "ast",
       "id": "play_board_view_capturedguesstiles",
       "community": 4,
@@ -2097,7 +2097,7 @@
       "label": "rankName()",
       "file_type": "code",
       "source_file": "src/components/play/board-view.tsx",
-      "source_location": "L253",
+      "source_location": "L250",
       "_origin": "ast",
       "id": "play_board_view_rankname",
       "community": 4,
@@ -6963,9 +6963,9 @@
       "source_file": "src/components/play/board-view.tsx",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_board_view",
-      "target": "play_board_view_guessmodifier",
-      "confidence_score": 1.0
+      "target": "play_board_view_guessmodifier"
     },
     {
       "relation": "contains",
@@ -6973,9 +6973,9 @@
       "source_file": "src/components/play/board-view.tsx",
       "source_location": "L31",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_board_view",
-      "target": "play_board_view_guessparts",
-      "confidence_score": 1.0
+      "target": "play_board_view_guessparts"
     },
     {
       "relation": "contains",
@@ -6983,9 +6983,9 @@
       "source_file": "src/components/play/board-view.tsx",
       "source_location": "L58",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_board_view",
-      "target": "play_board_view_guesspicker",
-      "confidence_score": 1.0
+      "target": "play_board_view_guesspicker"
     },
     {
       "relation": "contains",
@@ -7023,9 +7023,9 @@
       "source_file": "src/components/play/board-view.tsx",
       "source_location": "L103",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_board_view",
-      "target": "play_board_view_piececlashpreview",
-      "confidence_score": 1.0
+      "target": "play_board_view_piececlashpreview"
     },
     {
       "relation": "contains",
@@ -7033,9 +7033,9 @@
       "source_file": "src/components/play/board-view.tsx",
       "source_location": "L114",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_board_view",
-      "target": "play_board_view_pieceface",
-      "confidence_score": 1.0
+      "target": "play_board_view_pieceface"
     },
     {
       "relation": "contains",
@@ -7181,9 +7181,9 @@
       "source_file": "src/components/play/board-view.tsx",
       "source_location": "L120",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_board_view_pieceface",
-      "target": "play_board_view_boardglyphsize",
-      "confidence_score": 1.0
+      "target": "play_board_view_boardglyphsize"
     },
     {
       "relation": "imports",
@@ -7258,9 +7258,9 @@
       "source_file": "src/components/play/board-view.tsx",
       "source_location": "L45",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_board_view_guessbadge",
-      "target": "play_board_view_guessparts",
-      "confidence_score": 1.0
+      "target": "play_board_view_guessparts"
     },
     {
       "relation": "calls",
@@ -7269,9 +7269,9 @@
       "source_file": "src/components/play/board-view.tsx",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_board_view_guessglyph",
-      "target": "play_board_view_guessparts",
-      "confidence_score": 1.0
+      "target": "play_board_view_guessparts"
     },
     {
       "relation": "calls",
@@ -7313,9 +7313,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room",
-      "target": "play_board_view_guesspicker",
-      "confidence_score": 1.0
+      "target": "play_board_view_guesspicker"
     },
     {
       "relation": "imports",
@@ -7324,9 +7324,9 @@
       "source_file": "src/components/play/local-game-room.tsx",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_local_game_room",
-      "target": "play_board_view_guesspicker",
-      "confidence_score": 1.0
+      "target": "play_board_view_guesspicker"
     },
     {
       "relation": "imports",
@@ -7335,9 +7335,9 @@
       "source_file": "src/components/play/game-room.tsx",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_game_room",
-      "target": "play_board_view_piececlashpreview",
-      "confidence_score": 1.0
+      "target": "play_board_view_piececlashpreview"
     },
     {
       "relation": "imports",
@@ -7346,9 +7346,9 @@
       "source_file": "src/components/play/local-game-room.tsx",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "play_local_game_room",
-      "target": "play_board_view_piececlashpreview",
-      "confidence_score": 1.0
+      "target": "play_board_view_piececlashpreview"
     },
     {
       "relation": "imports",
@@ -9755,5 +9755,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "a129b61b15e67c4f05fef4fab4f710622ce092e5"
+  "built_at_commit": "19c39e67e9479bb6b3a436cc08821480841dcbaf"
 }

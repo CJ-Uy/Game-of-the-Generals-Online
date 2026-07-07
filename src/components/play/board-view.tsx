@@ -178,7 +178,10 @@ export function formatPlyForView(ply: string, side: PlayerSide) {
 }
 
 export function CommandChain({ activeRank }: { activeRank?: RankKey } = {}) {
-	const commandRanks = ranks.filter((rank) => rank.key !== "SPY" && rank.key !== "FLG");
+	const commandRanks = [
+		rankByKey.get("SPY"),
+		...ranks.filter((rank) => rank.key !== "SPY" && rank.key !== "FLG"),
+	].filter((rank): rank is (typeof ranks)[number] => Boolean(rank));
 
 	return (
 		<div>
@@ -196,20 +199,14 @@ export function CommandChain({ activeRank }: { activeRank?: RankKey } = {}) {
 						</div>
 						<div className="min-w-0">
 							<div className="truncate font-mono text-[9px] uppercase tracking-[0.08em] text-[#ede8da]">{rank.name}</div>
-							<div className="font-mono text-[8px] uppercase tracking-[0.12em] text-[#5b647a]">x{rank.count}</div>
+							<div className="font-mono text-[8px] uppercase tracking-[0.12em] text-[#5b647a]">
+								{rank.key === "SPY" ? "Killed by Private" : rank.key === "PVT" ? `x${rank.count} · Can kill Spy` : `x${rank.count}`}
+							</div>
 						</div>
 						<div className="text-center font-mono text-xs text-[#5b647a]">{index < commandRanks.length - 1 ? "↓" : ""}</div>
 					</div>
 					);
 				})}
-			</div>
-			<div className={`mt-2 grid grid-cols-[2.5rem_1fr] items-center gap-2 rounded-[4px] border px-2 py-1.5 transition-colors ${activeRank === "SPY" ? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)] shadow-[0_0_0_1px_rgba(201,168,93,0.2)]" : "border-[rgba(201,168,93,0.35)] bg-[rgba(201,168,93,0.08)]"}`}>
-				<div className="flex h-8 items-center justify-center rounded-[4px] border border-[#dabb74]/60 bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold leading-none text-[#0e1420]/75">
-					<CompactGlyph glyph={rankByKey.get("SPY")?.glyph ?? ""} />
-				</div>
-				<div className="font-mono text-[8px] uppercase leading-4 tracking-[0.08em] text-[#8a93a8]">
-					Spy x2 beats officers. Private beats Spy.
-				</div>
 			</div>
 			<div className={`mt-2 grid grid-cols-[2.5rem_1fr] items-center gap-2 rounded-[4px] border px-2 py-1.5 transition-colors ${activeRank === "FLG" ? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)] shadow-[0_0_0_1px_rgba(201,168,93,0.2)]" : "border-[#1c2740] bg-[#0b101b]"}`}>
 				<div className="flex h-8 items-center justify-center rounded-[4px] border border-[#dabb74]/60 bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold leading-none text-[#0e1420]/75">

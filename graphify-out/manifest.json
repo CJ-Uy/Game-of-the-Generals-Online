@@ -135,8 +135,8 @@
     "semantic_hash": ""
   },
   "src/components/play/board-view.tsx": {
-    "mtime": 1783395442.8095016,
-    "ast_hash": "7210d75d205015bc4b6e10b40ef183ab",
+    "mtime": 1783397299.1020105,
+    "ast_hash": "8355f177050a0da27dd28fe924abce79",
     "semantic_hash": ""
   },
   "src/components/play/game-room.tsx": {
