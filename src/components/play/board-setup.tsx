@@ -508,10 +508,10 @@ export function BoardSetup() {
 										className={`aspect-square rounded-[4px] border transition-colors ${frontLine ? "border-t-2 border-t-[rgba(201,168,93,0.4)]" : ""} ${
 											active
 												? piece
-													? "border-[rgba(201,168,93,0.5)] bg-[#121b2c] hover:border-[var(--accent)]"
+													? "border-[rgba(201,168,93,0.5)] bg-[var(--board-light)] hover:border-[var(--accent)]"
 													: selected
 														? "border-[rgba(201,168,93,0.55)] bg-[rgba(201,168,93,0.1)] hover:bg-[rgba(201,168,93,0.16)]"
-														: "border-[#2c3a55] bg-[#121b2c] hover:border-[rgba(201,168,93,0.4)]"
+														: "border-[var(--board-border)] bg-[var(--board-dark)] hover:border-[rgba(201,168,93,0.4)]"
 												: "border-[#162035] bg-[#090e18]"
 										}`}
 									>

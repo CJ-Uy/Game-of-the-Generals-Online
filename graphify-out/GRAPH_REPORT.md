@@ -1,16 +1,16 @@
 # Graph Report - Game-of-the-Generals-Online  (2026-07-07)
 
 ## Corpus Check
-- 45 files · ~54,413 words
+- 45 files · ~95,351 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 361 nodes · 575 edges · 23 communities (19 shown, 4 thin omitted)
+- 365 nodes · 584 edges · 23 communities (19 shown, 4 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ed21efe0`
+- Built from commit: `a129b61b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -82,8 +82,8 @@ Cohesion: 0.05
 Nodes (36): dependencies, class-variance-authority, clsx, drizzle-orm, next, @opennextjs/cloudflare, @radix-ui/react-slot, react (+28 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.14
-Nodes (24): PlayerSide, PublicPiece, PublicRoom, ArbiterChip(), boardGlyphSize(), boardIndex(), CapturedGuessTiles(), CommandChain() (+16 more)
+Cohesion: 0.12
+Nodes (28): PlayerSide, PublicPiece, PublicRoom, ArbiterChip(), boardGlyphSize(), boardIndex(), CapturedGuessTiles(), CommandChain() (+20 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.10
@@ -130,7 +130,7 @@ Cohesion: 0.40
 Nodes (4): compat, __dirname, eslintConfig, __filename
 
 ## Knowledge Gaps
-- **143 isolated node(s):** `__filename`, `__dirname`, `compat`, `eslintConfig`, `nextConfig` (+138 more)
+- **144 isolated node(s):** `__filename`, `__dirname`, `compat`, `eslintConfig`, `nextConfig` (+139 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **4 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -140,11 +140,11 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `Button()` connect `Community 2` to `Community 4`?**
   _High betweenness centrality (0.015) - this node is a cross-community bridge._
 - **Why does `Card()` connect `Community 2` to `Community 4`?**
-  _High betweenness centrality (0.013) - this node is a cross-community bridge._
+  _High betweenness centrality (0.014) - this node is a cross-community bridge._
 - **Why does `CardTitle()` connect `Community 2` to `Community 4`?**
-  _High betweenness centrality (0.013) - this node is a cross-community bridge._
+  _High betweenness centrality (0.014) - this node is a cross-community bridge._
 - **What connects `__filename`, `__dirname`, `compat` to the rest of the system?**
-  _143 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _144 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.06801346801346801 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**

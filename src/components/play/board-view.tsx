@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { COLS, FILES, ROWS, ranks, type PlayerSide, type PublicPiece, type RankKey } from "@/lib/game";
 
 export const rankByKey = new Map(ranks.map((rank) => [rank.key, rank]));
@@ -22,29 +25,103 @@ export function CompactGlyph({ glyph }: { glyph: string }) {
 	);
 }
 
-export type GuessTag = RankKey | "HIGH" | "LOW";
+type GuessModifier = "<" | ">";
+export type GuessTag = RankKey | `${GuessModifier}${RankKey}`;
 
-export const guessOptions: { key: GuessTag; glyph: string; name: string }[] = [
-	{ key: "HIGH", glyph: ">", name: "Higher" },
-	{ key: "LOW", glyph: "<", name: "Lower" },
-	...ranks.map((rank) => ({ key: rank.key, glyph: rank.glyph, name: rank.name })),
-];
+function guessParts(tag?: GuessTag): { modifier: GuessModifier | ""; key?: RankKey; glyph: string } {
+	if (!tag) return { modifier: "", glyph: "" };
+	const modifier = tag[0] === "<" || tag[0] === ">" ? tag[0] : "";
+	const key = (modifier ? tag.slice(1) : tag) as RankKey;
+	return { modifier, key, glyph: rankByKey.get(key)?.glyph ?? key };
+}
 
 export function guessGlyph(tag?: GuessTag) {
-	if (!tag) return "";
-	if (tag === "HIGH") return ">";
-	if (tag === "LOW") return "<";
-	return rankByKey.get(tag)?.glyph ?? tag;
+	const { modifier, glyph } = guessParts(tag);
+	return `${modifier}${glyph}`;
 }
 
 export function GuessBadge({ tag }: { tag?: GuessTag }) {
 	if (!tag) return null;
-	const glyph = guessGlyph(tag);
+	const { modifier, glyph } = guessParts(tag);
 	return (
 		<span className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center">
-			<span className={`flex min-h-6 min-w-7 items-center justify-center rounded-[4px] border border-[rgba(201,168,93,0.75)] bg-[#07100b]/88 px-1.5 py-0.5 font-bold leading-none text-[var(--accent)] shadow-[0_4px_14px_rgba(0,0,0,0.45)] ${boardGlyphSize(glyph)}`}>
-				<CompactGlyph glyph={glyph} />
+			<span className="flex min-h-6 min-w-7 items-center justify-center gap-0.5 rounded-[4px] border border-[rgba(201,168,93,0.75)] bg-[#07100b]/88 px-1.5 py-0.5 font-bold leading-none text-[var(--accent)] shadow-[0_4px_14px_rgba(0,0,0,0.45)]">
+				{modifier ? <span className="text-[10px] sm:text-xs">{modifier}</span> : null}
+				<span className={boardGlyphSize(glyph)}>
+					<CompactGlyph glyph={glyph} />
+				</span>
 			</span>
+		</span>
+	);
+}
+
+export function GuessPicker({ onPick }: { onPick: (tag: GuessTag) => void }) {
+	const [modifier, setModifier] = useState<GuessModifier | "">("");
+
+	return (
+		<>
+			<div className="mb-3 grid grid-cols-3 gap-2">
+				{[
+					["", "Exact"],
+					["<", "<"],
+					[">", ">"],
+				].map(([value, label]) => (
+					<button
+						key={value || "exact"}
+						type="button"
+						onClick={() => setModifier(value as GuessModifier | "")}
+						className={`rounded-[4px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors ${
+							modifier === value ? "border-[var(--accent)] bg-[rgba(201,168,93,0.12)] text-[var(--accent)]" : "border-[#2c3a55] bg-[#121b2c] text-[#8a93a8] hover:border-[rgba(201,168,93,0.5)]"
+						}`}
+					>
+						{label}
+					</button>
+				))}
+			</div>
+			<div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+				{ranks.map((rank) => (
+					<button
+						key={rank.key}
+						type="button"
+						onClick={() => onPick(`${modifier}${rank.key}` as GuessTag)}
+						className="rounded-[5px] border border-[#2c3a55] bg-[#121b2c] p-3 text-left transition-colors active:scale-[0.98] hover:border-[var(--accent)]"
+					>
+						<div className="flex items-center gap-1 font-bold leading-none text-[var(--accent)]">
+							{modifier ? <span className="text-xs">{modifier}</span> : null}
+							<span className={boardGlyphSize(rank.glyph)}>
+								<CompactGlyph glyph={rank.glyph} />
+							</span>
+						</div>
+						<div className="mt-2 truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8]">{rank.name}</div>
+					</button>
+				))}
+			</div>
+		</>
+	);
+}
+
+export function PieceClashPreview({ attacker, defender }: { attacker: PublicPiece; defender: PublicPiece }) {
+	return (
+		<span className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center">
+			<PieceFace piece={defender} />
+			<span className="absolute inset-0 flex items-center justify-center [transform:translate(-18%,-22%)_rotate(-4deg)]">
+				<PieceFace piece={attacker} raised />
+			</span>
+		</span>
+	);
+}
+
+function PieceFace({ piece, raised = false }: { piece: PublicPiece; raised?: boolean }) {
+	const glyph = piece.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
+	return (
+		<span
+			className={`flex h-[74%] w-[86%] items-center justify-center overflow-hidden rounded-[4px] border font-bold leading-none shadow-[0_14px_30px_rgba(0,0,0,0.5)] ${
+				piece.side === "you"
+					? `border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75 ${boardGlyphSize(glyph)}`
+					: "border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257]"
+			} ${raised ? "ring-2 ring-[rgba(201,168,93,0.75)]" : ""}`}
+		>
+			{piece.side === "you" ? <CompactGlyph glyph={glyph} /> : null}
 		</span>
 	);
 }
@@ -100,7 +177,7 @@ export function formatPlyForView(ply: string, side: PlayerSide) {
 	return `${player} ${FILES[from.col]}${ROWS - from.row}${action}${FILES[to.col]}${ROWS - to.row}`;
 }
 
-export function CommandChain() {
+export function CommandChain({ activeRank }: { activeRank?: RankKey } = {}) {
 	const commandRanks = ranks.filter((rank) => rank.key !== "SPY" && rank.key !== "FLG");
 
 	return (
@@ -110,8 +187,10 @@ export function CommandChain() {
 				<span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#5b647a]">Count shown</span>
 			</div>
 			<div className="mt-3 space-y-1.5">
-				{commandRanks.map((rank, index) => (
-					<div key={rank.key} className="grid grid-cols-[2.5rem_1fr_1.5rem] items-center gap-2 rounded-[4px] border border-[#1c2740] bg-[#0b101b] px-2 py-1.5">
+				{commandRanks.map((rank, index) => {
+					const active = activeRank === rank.key;
+					return (
+					<div key={rank.key} aria-current={active ? "true" : undefined} className={`grid grid-cols-[2.5rem_1fr_1.5rem] items-center gap-2 rounded-[4px] border px-2 py-1.5 transition-colors ${active ? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)] shadow-[0_0_0_1px_rgba(201,168,93,0.2)]" : "border-[#1c2740] bg-[#0b101b]"}`}>
 						<div className={`flex h-8 items-center justify-center rounded-[4px] border border-[#dabb74]/60 bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold leading-none text-[#0e1420]/75 ${boardGlyphSize(rank.glyph)}`}>
 							<CompactGlyph glyph={rank.glyph} />
 						</div>
@@ -121,9 +200,10 @@ export function CommandChain() {
 						</div>
 						<div className="text-center font-mono text-xs text-[#5b647a]">{index < commandRanks.length - 1 ? "↓" : ""}</div>
 					</div>
-				))}
+					);
+				})}
 			</div>
-			<div className="mt-2 grid grid-cols-[2.5rem_1fr] items-center gap-2 rounded-[4px] border border-[rgba(201,168,93,0.35)] bg-[rgba(201,168,93,0.08)] px-2 py-1.5">
+			<div className={`mt-2 grid grid-cols-[2.5rem_1fr] items-center gap-2 rounded-[4px] border px-2 py-1.5 transition-colors ${activeRank === "SPY" ? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)] shadow-[0_0_0_1px_rgba(201,168,93,0.2)]" : "border-[rgba(201,168,93,0.35)] bg-[rgba(201,168,93,0.08)]"}`}>
 				<div className="flex h-8 items-center justify-center rounded-[4px] border border-[#dabb74]/60 bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold leading-none text-[#0e1420]/75">
 					<CompactGlyph glyph={rankByKey.get("SPY")?.glyph ?? ""} />
 				</div>
@@ -131,7 +211,7 @@ export function CommandChain() {
 					Spy x2 beats officers. Private beats Spy.
 				</div>
 			</div>
-			<div className="mt-2 grid grid-cols-[2.5rem_1fr] items-center gap-2 rounded-[4px] border border-[#1c2740] bg-[#0b101b] px-2 py-1.5">
+			<div className={`mt-2 grid grid-cols-[2.5rem_1fr] items-center gap-2 rounded-[4px] border px-2 py-1.5 transition-colors ${activeRank === "FLG" ? "border-[var(--accent)] bg-[rgba(201,168,93,0.14)] shadow-[0_0_0_1px_rgba(201,168,93,0.2)]" : "border-[#1c2740] bg-[#0b101b]"}`}>
 				<div className="flex h-8 items-center justify-center rounded-[4px] border border-[#dabb74]/60 bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold leading-none text-[#0e1420]/75">
 					<CompactGlyph glyph={rankByKey.get("FLG")?.glyph ?? ""} />
 				</div>

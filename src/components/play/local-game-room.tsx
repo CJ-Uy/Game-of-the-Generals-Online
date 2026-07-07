@@ -11,11 +11,12 @@ import {
 	CommandChain,
 	CapturedGuessTiles,
 	GuessBadge,
+	GuessPicker,
+	PieceClashPreview,
 	type GuessTag,
 	boardGlyphSize,
 	boardIndex,
 	formatPlyForView,
-	guessOptions,
 	parseLastMove,
 	rankByKey,
 	rankIndex,
@@ -74,6 +75,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 	const [botThinking, setBotThinking] = useState(false);
 	const [reviewBoard, setReviewBoard] = useState(false);
 	const [arbiterCell, setArbiterCell] = useState<{ col: number; row: number; key: number } | null>(null);
+	const [clashPreview, setClashPreview] = useState<{ col: number; row: number; attacker: PublicPiece; defender: PublicPiece } | null>(null);
 	const arbiterTimer = useRef<number | null>(null);
 	const touchDrag = useRef<{ pieceId: number; pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
 	const suppressClick = useRef(false);
@@ -95,10 +97,14 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 		if (arbiterTimer.current) window.clearTimeout(arbiterTimer.current);
 	}, []);
 
-	const showArbiter = (col: number, row: number) => {
+	const showArbiter = (col: number, row: number, attacker?: PublicPiece, defender?: PublicPiece) => {
 		if (arbiterTimer.current) window.clearTimeout(arbiterTimer.current);
 		setArbiterCell({ col, row, key: Date.now() });
-		arbiterTimer.current = window.setTimeout(() => setArbiterCell(null), 850);
+		setClashPreview(attacker && defender ? { col, row, attacker, defender } : null);
+		arbiterTimer.current = window.setTimeout(() => {
+			setArbiterCell(null);
+			setClashPreview(null);
+		}, 850);
 	};
 
 	const room: PublicRoom | null = useMemo(() => (state ? toPublicRoom(mode === "local" ? "PASS & PLAY" : "BOT", state.outcome ? "finished" : "active", version, viewSide, state) : null), [mode, state, version, viewSide]);
@@ -131,7 +137,9 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 	const movePiece = (pieceId: number, col: number, row: number) => {
 		if (!state || !myTurn) return;
 		try {
-			if (state.pieces.some((piece) => piece.alive && piece.owner !== viewSide && piece.col === col && piece.row === row)) showArbiter(col, row);
+			const attacker = pieces.find((piece) => piece.id === pieceId && piece.alive && piece.side === "you");
+			const defender = pieces.find((piece) => piece.alive && piece.side !== "you" && piece.col === col && piece.row === row);
+			if (attacker && defender) showArbiter(col, row, attacker, defender);
 			const next = applyMove(state, viewSide, pieceId, col, row);
 			animateBoard(() => setState(next));
 			setVersion((current) => current + 1);
@@ -152,14 +160,16 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 			if (!move) {
 				animateBoard(() => setState(addMessage(resign(state, "slate"), "sys", "Bot had no legal move.")));
 			} else {
-				if (move.target) showArbiter(move.col, move.row);
+				const attacker = pieces.find((piece) => piece.id === move.pieceId && piece.alive);
+				const defender = pieces.find((piece) => piece.alive && piece.col === move.col && piece.row === move.row);
+				if (attacker && defender) showArbiter(move.col, move.row, attacker, defender);
 				animateBoard(() => setState(applyMove(state, "slate", move.pieceId, move.col, move.row)));
 			}
 			setVersion((current) => current + 1);
 			setBotThinking(false);
 		}, botLevel === "Spy" ? 280 : 520);
 		return () => window.clearTimeout(timer);
-	}, [botLevel, mode, state]);
+	}, [botLevel, mode, pieces, state]);
 
 	const onCell = (col: number, row: number) => {
 		const cell = byCell.get(row * COLS + col);
@@ -276,7 +286,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 				<aside className="hidden xl:block">
 					<div className="sticky top-[76px]">
 						<Card className="p-4">
-							<CommandChain />
+							<CommandChain activeRank={sel?.rank} />
 						</Card>
 					</div>
 				</aside>
@@ -309,6 +319,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 										const isLastTo = lastMove?.to.col === col && lastMove.to.row === row;
 										const lastMine = lastMove?.side === viewSide;
 										const isArbiterTo = arbiterCell?.col === col && arbiterCell.row === row;
+										const isClashTo = clashPreview?.col === col && clashPreview.row === row;
 								const glyph = piece?.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
 
 								return (
@@ -337,14 +348,16 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 										className={`relative aspect-square rounded-[4px] border transition-colors ${
 											targets.has(index)
 												? "border-[rgba(201,168,93,0.55)] bg-[rgba(201,168,93,0.12)]"
-												: isLastFrom || isLastTo
+													: isLastFrom || isLastTo
 													? `${lastMine ? "border-[#8fae6e]" : "border-[#d98b73]"} bg-[rgba(143,174,110,0.12)]`
 													: (viewCol + viewRow) % 2 === 0
-														? "border-[#3d3425] bg-[#2a2418]"
-														: "border-[#2f271d] bg-[#181511]"
+														? "border-[var(--board-border)] bg-[var(--board-light)]"
+														: "border-[var(--board-border)] bg-[var(--board-dark)]"
 										} ${piece?.side === "you" && myTurn ? "touch-none" : ""}`}
 									>
-										{piece ? (
+										{isClashTo && clashPreview ? (
+											<PieceClashPreview attacker={clashPreview.attacker} defender={clashPreview.defender} />
+										) : piece ? (
 											<span
 												style={{ viewTransitionName: `piece-${piece.id}` } as CSSProperties}
 												className={`pointer-events-none mx-auto flex h-[74%] w-[86%] items-center justify-center overflow-hidden rounded-[4px] border font-bold leading-none ${
@@ -352,14 +365,14 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 														? `border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75 ${boardGlyphSize(glyph)} ${
 																piece.id === selected || draggingPiece === piece.id ? "ring-2 ring-[var(--accent)]" : ""
 															}`
-														: "border-[#2c3a55] bg-gradient-to-br from-[#253352] to-[#1a2338]"
+														: "border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257]"
 												}`}
 											>
 												{piece.side === "you" ? <CompactGlyph glyph={glyph} /> : null}
 											</span>
 										) : null}
 										{isArbiterTo ? <ArbiterChip key={arbiterCell?.key} /> : null}
-										{piece?.side === "foe" ? <GuessBadge tag={tags[piece.id]} /> : null}
+										{piece?.side === "foe" && !isClashTo ? <GuessBadge tag={tags[piece.id]} /> : null}
 									</button>
 								);
 									})}
@@ -391,7 +404,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 						</div>
 					</Card>
 					<Card className="mt-4 p-4 xl:hidden">
-						<CommandChain />
+						<CommandChain activeRank={sel?.rank} />
 					</Card>
 				</div>
 
@@ -439,14 +452,12 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 							</div>
 							<Button variant="ghost" size="sm" onClick={() => setTagTarget(null)}>Close</Button>
 						</div>
-						<div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-							{guessOptions.map((rank) => (
-								<button key={rank.key} type="button" onClick={() => { setTags((current) => ({ ...current, [tagTarget]: rank.key })); setTagTarget(null); }} className="rounded-[5px] border border-[#2c3a55] bg-[#121b2c] p-3 text-left transition-colors hover:border-[var(--accent)]">
-									<div className="font-bold leading-none text-[var(--accent)]"><CompactGlyph glyph={rank.glyph} /></div>
-									<div className="mt-2 truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8]">{rank.name}</div>
-								</button>
-							))}
-						</div>
+						<GuessPicker
+							onPick={(tag) => {
+								setTags((current) => ({ ...current, [tagTarget]: tag }));
+								setTagTarget(null);
+							}}
+						/>
 					</div>
 				</div>
 			) : null}

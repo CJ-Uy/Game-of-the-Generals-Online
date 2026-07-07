@@ -341,10 +341,13 @@ export function WarBoard() {
 			tick.current = window.setTimeout(() => {
 				step();
 				schedule();
-			}, 1500);
+			}, 1050);
 		}
 
-		schedule();
+		tick.current = window.setTimeout(() => {
+			step();
+			schedule();
+		}, 160);
 
 		return () => {
 			if (tick.current) window.clearTimeout(tick.current);
@@ -388,13 +391,15 @@ export function WarBoard() {
 					<div className="absolute inset-0 grid grid-cols-9 grid-rows-8 gap-[3px]">
 						{Array.from({ length: COLS * ROWS }).map((_, index) => {
 							const hot = index === hotCell;
+							const row = Math.floor(index / COLS);
+							const light = (row + (index % COLS)) % 2 === 0;
 							return (
 								<div
 									key={index}
 									className="rounded-[4px] border transition-colors duration-500"
 									style={{
-										background: hot ? "rgba(201,168,93,0.2)" : "rgba(28,39,64,0.38)",
-										borderColor: hot ? "rgba(201,168,93,0.7)" : "rgba(28,39,64,0.9)",
+										background: hot ? "rgba(201,168,93,0.2)" : light ? "rgba(32,41,54,0.78)" : "rgba(18,25,35,0.82)",
+										borderColor: hot ? "rgba(201,168,93,0.7)" : "rgba(67,82,105,0.72)",
 									}}
 								/>
 							);
@@ -428,9 +433,9 @@ export function WarBoard() {
 										background:
 											piece.side === "gold"
 												? "linear-gradient(160deg, #c9a85d, #a8894a)"
-												: "linear-gradient(160deg, #253352, #1a2338)",
+												: "linear-gradient(160deg, #314a79, #203257)",
 										color: piece.side === "gold" ? "rgba(14,20,32,0.7)" : "rgba(201,168,93,0.35)",
-										borderColor: piece.side === "gold" ? "#dabb74" : isPicked ? "#c9a85d" : "#2c3a55",
+										borderColor: piece.side === "gold" ? "#dabb74" : isPicked ? "#c9a85d" : "#50658a",
 										boxShadow: piece.stack
 											? "0 0 0 2px rgba(201,168,93,0.85), 0 22px 40px rgba(0,0,0,0.65)"
 											: "0 10px 22px rgba(0,0,0,0.5)",

@@ -5,6 +5,9 @@
 	--foreground: #ede8da;
 	--accent: #c9a85d;
 	--accent-foreground: #0e1420;
+	--board-light: #202936;
+	--board-dark: #121923;
+	--board-border: rgba(67, 82, 105, 0.78);
 }
 
 @theme inline {

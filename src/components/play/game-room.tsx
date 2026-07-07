@@ -12,11 +12,12 @@ import {
 	CommandChain,
 	CapturedGuessTiles,
 	GuessBadge,
+	GuessPicker,
+	PieceClashPreview,
 	type GuessTag,
 	boardGlyphSize,
 	boardIndex,
 	formatPlyForView,
-	guessOptions,
 	parseLastMove,
 	rankByKey,
 	rankIndex,
@@ -140,6 +141,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const [reviewBoard, setReviewBoard] = useState(false);
 	const [pendingMove, setPendingMove] = useState<{ pieceId: number; col: number; row: number; capture: boolean } | null>(null);
 	const [arbiterCell, setArbiterCell] = useState<{ col: number; row: number; key: number } | null>(null);
+	const [clashPreview, setClashPreview] = useState<{ col: number; row: number; attacker: PublicPiece; defender: PublicPiece } | null>(null);
 	const arbiterTimer = useRef<number | null>(null);
 	const touchDrag = useRef<{ pieceId: number; pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
 	const suppressClick = useRef(false);
@@ -153,10 +155,14 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 		if (arbiterTimer.current) window.clearTimeout(arbiterTimer.current);
 	}, []);
 
-	const showArbiter = (col: number, row: number) => {
+	const showArbiter = (col: number, row: number, attacker?: PublicPiece, defender?: PublicPiece) => {
 		if (arbiterTimer.current) window.clearTimeout(arbiterTimer.current);
 		setArbiterCell({ col, row, key: Date.now() });
-		arbiterTimer.current = window.setTimeout(() => setArbiterCell(null), 850);
+		setClashPreview(attacker && defender ? { col, row, attacker, defender } : null);
+		arbiterTimer.current = window.setTimeout(() => {
+			setArbiterCell(null);
+			setClashPreview(null);
+		}, 850);
 	};
 
 	const load = useCallback(async () => {
@@ -212,7 +218,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 		const movingPiece = room?.state.pieces.find((item) => item.id === pieceId && item.alive && item.side === "you");
 		const movingTarget = room?.state.pieces.find((item) => item.alive && item.col === col && item.row === row);
 		if (movingPiece) setPendingMove({ pieceId, col, row, capture: !!movingTarget });
-		if (movingTarget) showArbiter(col, row);
+		if (movingPiece && movingTarget) showArbiter(col, row, movingPiece, movingTarget);
 		animateBoard(() => setRoom((current) => {
 			if (!current || current.state.outcome) return current;
 			const piece = current.state.pieces.find((item) => item.id === pieceId && item.alive && item.side === "you");
@@ -426,7 +432,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 				<aside className="hidden xl:block">
 					<div className="sticky top-[76px]">
 						<Card className="p-4">
-							<CommandChain />
+							<CommandChain activeRank={sel?.rank} />
 						</Card>
 					</div>
 				</aside>
@@ -462,6 +468,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 										const isPendingFrom = pendingPiece?.col === col && pendingPiece.row === row;
 										const isPendingTo = pendingMove?.col === col && pendingMove.row === row;
 										const isArbiterTo = arbiterCell?.col === col && arbiterCell.row === row;
+										const isClashTo = clashPreview?.col === col && clashPreview.row === row;
 								const isSelected = piece != null && piece.id === selected;
 								const glyph = piece?.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
 
@@ -496,11 +503,13 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 													: isLastFrom || isLastTo
 														? `${lastMine ? "border-[#8fae6e]" : "border-[#d98b73]"} bg-[rgba(143,174,110,0.12)]`
 														: (viewCol + viewRow) % 2 === 0
-														? "border-[#3d3425] bg-[#2a2418]"
-															: "border-[#2f271d] bg-[#181511]"
+														? "border-[var(--board-border)] bg-[var(--board-light)]"
+															: "border-[var(--board-border)] bg-[var(--board-dark)]"
 										} ${piece?.side === "you" && myTurn ? "touch-none" : ""}`}
 									>
-										{piece ? (
+										{isClashTo && clashPreview ? (
+											<PieceClashPreview attacker={clashPreview.attacker} defender={clashPreview.defender} />
+										) : piece ? (
 											<span
 												style={{ viewTransitionName: `piece-${piece.id}` } as CSSProperties}
 												className={`pointer-events-none mx-auto flex h-[74%] w-[86%] items-center justify-center overflow-hidden rounded-[4px] border font-bold leading-none ${
@@ -508,14 +517,14 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 														? `border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75 ${boardGlyphSize(glyph)} ${
 																isSelected || draggingPiece === piece.id ? "ring-2 ring-[var(--accent)]" : ""
 															}`
-														: "border-[#2c3a55] bg-gradient-to-br from-[#253352] to-[#1a2338]"
+														: "border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257]"
 												}`}
 											>
 												{piece.side === "you" ? <CompactGlyph glyph={glyph} /> : null}
 											</span>
 										) : null}
 										{(pendingMove?.capture && isPendingTo) || isArbiterTo ? <ArbiterChip key={arbiterCell?.key} /> : null}
-										{piece?.side === "foe" ? <GuessBadge tag={tags[piece.id]} /> : null}
+										{piece?.side === "foe" && !isClashTo ? <GuessBadge tag={tags[piece.id]} /> : null}
 									</button>
 								);
 									})}
@@ -563,7 +572,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 						</div>
 					</Card>
 					<Card className="mt-4 p-4 xl:hidden">
-						<CommandChain />
+						<CommandChain activeRank={sel?.rank} />
 					</Card>
 				</div>
 
@@ -649,24 +658,12 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 							</Button>
 						</div>
 
-						<div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-							{guessOptions.map((rank) => (
-								<button
-									key={rank.key}
-									type="button"
-									onClick={() => {
-										setTags((current) => ({ ...current, [tagTarget]: rank.key }));
-										setTagTarget(null);
-									}}
-									className="rounded-[5px] border border-[#2c3a55] bg-[#121b2c] p-3 text-left transition-colors active:scale-[0.98] hover:border-[var(--accent)]"
-								>
-									<div className={`font-bold leading-none text-[var(--accent)] ${rank.glyph.length >= 4 ? "text-[10px]" : rank.glyph.length === 3 ? "text-xs" : "text-base"}`}>
-										<CompactGlyph glyph={rank.glyph} />
-									</div>
-									<div className="mt-2 truncate font-mono text-[8px] uppercase tracking-[0.08em] text-[#8a93a8]">{rank.name}</div>
-								</button>
-							))}
-						</div>
+						<GuessPicker
+							onPick={(tag) => {
+								setTags((current) => ({ ...current, [tagTarget]: tag }));
+								setTagTarget(null);
+							}}
+						/>
 					</div>
 				</div>
 			) : null}
