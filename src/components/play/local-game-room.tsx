@@ -156,20 +156,26 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 		if (mode !== "bot" || !state || state.turn !== "slate" || state.outcome) return;
 		setBotThinking(true);
 		const timer = window.setTimeout(() => {
-			const move = chooseBotMove(state, "slate", botLevel);
-			if (!move) {
-				animateBoard(() => setState(addMessage(resign(state, "slate"), "sys", "Bot had no legal move.")));
-			} else {
-				const attacker = pieces.find((piece) => piece.id === move.pieceId && piece.alive);
-				const defender = pieces.find((piece) => piece.alive && piece.col === move.col && piece.row === move.row);
-				if (attacker && defender) showArbiter(move.col, move.row, attacker, defender);
-				animateBoard(() => setState(applyMove(state, "slate", move.pieceId, move.col, move.row)));
+			try {
+				const move = chooseBotMove(state, "slate", botLevel);
+				if (!move) {
+					animateBoard(() => setState(addMessage(resign(state, "slate"), "sys", "Bot had no legal move.")));
+				} else {
+					const publicPieces = toPublicRoom("BOT", "active", 0, viewSide, state).state.pieces;
+					const attacker = publicPieces.find((piece) => piece.id === move.pieceId && piece.alive);
+					const defender = publicPieces.find((piece) => piece.alive && piece.col === move.col && piece.row === move.row);
+					if (attacker && defender) showArbiter(move.col, move.row, attacker, defender);
+					animateBoard(() => setState(applyMove(state, "slate", move.pieceId, move.col, move.row)));
+				}
+				setVersion((current) => current + 1);
+			} catch (caught) {
+				setError(caught instanceof Error ? caught.message : "Bot move failed.");
+			} finally {
+				setBotThinking(false);
 			}
-			setVersion((current) => current + 1);
-			setBotThinking(false);
 		}, botLevel === "Spy" ? 280 : 520);
 		return () => window.clearTimeout(timer);
-	}, [botLevel, mode, pieces, state]);
+	}, [botLevel, mode, state, viewSide]);
 
 	const onCell = (col: number, row: number) => {
 		const cell = byCell.get(row * COLS + col);
