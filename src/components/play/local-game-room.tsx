@@ -70,6 +70,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 	const [selected, setSelected] = useState<number | null>(null);
 	const [tags, setTags] = useState<Record<number, GuessTag>>({});
 	const [tagTarget, setTagTarget] = useState<number | null>(null);
+	const [mobilePanel, setMobilePanel] = useState<"ranks" | "taken" | "log" | "plan" | null>(null);
 	const [error, setError] = useState("");
 	const [botLevel, setBotLevel] = useState("Sergeant");
 	const [botThinking, setBotThinking] = useState(false);
@@ -270,7 +271,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 
 	return (
 		<main className="min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)]">
-			<header className="sticky top-0 z-50 flex h-[60px] items-center justify-between gap-4 border-b border-[#1c2740] bg-[#0e1420]/90 px-5 backdrop-blur md:px-12">
+			<header className="sticky top-0 z-50 flex h-[52px] items-center justify-between gap-3 border-b border-[#1c2740] bg-[#0e1420]/90 px-3 backdrop-blur sm:h-[60px] sm:px-5 md:px-12">
 				<Link href="/" className="flex min-w-0 items-center gap-2.5">
 					<span className="text-[var(--accent)]">★</span>
 					<span className="font-display text-lg font-bold uppercase tracking-[0.07em] md:hidden">GoG Online</span>
@@ -286,7 +287,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 				</div>
 			</header>
 
-			<section className="mx-auto grid max-w-[1360px] gap-5 px-4 pb-28 pt-5 lg:px-6 lg:pb-10 xl:grid-cols-[260px_minmax(0,760px)_300px]">
+			<section className="mx-auto grid max-w-[1360px] gap-4 px-2 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-3 sm:px-4 lg:px-6 lg:pb-10 xl:grid-cols-[260px_minmax(0,760px)_300px] xl:gap-5">
 				<aside className="hidden xl:block">
 					<div className="sticky top-[76px]">
 						<Card className="p-4">
@@ -295,7 +296,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 					</div>
 				</aside>
 				<div className="mx-auto w-full max-w-[760px] min-w-0">
-					<div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[6px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] ${statusTone}`}>
+					<div className={`mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[6px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] sm:mb-3 sm:tracking-[0.2em] ${statusTone}`}>
 						<span className="flex items-center gap-2">
 							<span className={`h-2 w-2 rounded-full ${myTurn ? "bg-[#8fae6e]" : "bg-[var(--accent)]"}`} />
 							{statusText}
@@ -306,7 +307,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 					</div>
 					{error ? <div className="mb-3 rounded-[5px] border border-[#7c3f36] bg-[#2b1716] px-3 py-2 text-sm text-[#d98b73]">{error}</div> : null}
 
-					<div className="rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-2 sm:p-3">
+					<div className="rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-1.5 sm:p-3">
 						<div className="mb-2 flex items-center justify-between px-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[#44506b]">
 							<span>{viewSide === "slate" ? "Gold line" : "Slate line"}</span>
 							<span>drag or tap to move</span>
@@ -398,7 +399,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 						</div>
 					</div>
 
-					<Card className="mt-4 p-4">
+					<Card className="mt-4 hidden p-4 sm:block">
 						<div className="grid gap-4 sm:grid-cols-2">
 							<div>
 								<CardTitle className="text-xl">Your fallen</CardTitle>
@@ -410,7 +411,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 							</div>
 						</div>
 					</Card>
-					<Card className="mt-4 p-4 xl:hidden">
+					<Card className="hidden">
 						<CommandChain activeRank={sel?.rank} />
 					</Card>
 				</div>
@@ -436,6 +437,72 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 					</div>
 				</aside>
 			</section>
+
+			<div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#1c2740] bg-[#0e1420]/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur xl:hidden">
+				<div className="mx-auto grid max-w-[1280px] grid-cols-4 items-center gap-2">
+					<div className="col-span-full min-w-0 font-mono text-[11px] uppercase leading-tight tracking-[0.14em] text-[#8fae6e]">
+						{statusText}
+						<span className="block text-[9px] tracking-[0.12em] text-[#5b647a]">
+							Fallen {myFallen.length} · Taken {foeFallen.length}
+						</span>
+					</div>
+					<Button variant="outline" size="sm" className="w-full px-1" onClick={() => setMobilePanel("ranks")}>
+						Ranks
+					</Button>
+					<Button variant="outline" size="sm" className="w-full px-1" onClick={() => setMobilePanel("taken")}>
+						Taken
+					</Button>
+					<Button variant="outline" size="sm" className="w-full px-1" onClick={() => setMobilePanel("log")}>
+						Log
+					</Button>
+					<Button variant="outline" size="sm" className="w-full px-1" onClick={() => setMobilePanel("plan")}>
+						Info
+					</Button>
+				</div>
+			</div>
+
+			{mobilePanel ? (
+				<div className="fixed inset-0 z-[70] flex items-end bg-[#05070c]/65 backdrop-blur-sm xl:hidden" onClick={() => setMobilePanel(null)}>
+					<div
+						className="flex max-h-[78dvh] min-h-[44dvh] w-full flex-col rounded-t-[10px] border border-[#2c3a55] bg-[#0e1420] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-18px_80px_rgba(0,0,0,0.65)]"
+						onClick={(event) => event.stopPropagation()}
+					>
+						<div className="mb-3 flex items-center justify-between gap-3">
+							<CardTitle className="text-xl">{mobilePanel === "ranks" ? "Ranks" : mobilePanel === "taken" ? "Captured" : mobilePanel === "log" ? "Move log" : mode === "bot" ? "Bot plan" : "Pass & play"}</CardTitle>
+							<Button variant="ghost" size="sm" onClick={() => setMobilePanel(null)}>
+								Close
+							</Button>
+						</div>
+						{mobilePanel === "ranks" ? <div className="overflow-y-auto pr-1"><CommandChain activeRank={sel?.rank} /></div> : null}
+						{mobilePanel === "taken" ? (
+							<div className="grid gap-5 overflow-y-auto">
+								<div>
+									<CardTitle className="text-xl">Your fallen</CardTitle>
+									<p className="mt-3 text-sm text-[#8a93a8]">{myFallen.length ? `${myFallen.length} pieces lost.` : "No casualties yet."}</p>
+								</div>
+								<div>
+									<CardTitle className="text-xl">Enemy captured</CardTitle>
+									<CapturedGuessTiles pieces={foeFallen} tags={tags} onTag={setTagTarget} />
+								</div>
+							</div>
+						) : null}
+						{mobilePanel === "log" ? (
+							<div className="max-h-[52dvh] overflow-y-auto font-mono text-[11px] leading-6">
+								{room.state.plies.length ? [...room.state.plies].reverse().map((ply, index) => <div key={`${ply}-${index}`}>{room.state.plies.length - index}. {formatPlyForView(ply, viewSide)}</div>) : <p className="font-body text-xs text-[#5b647a]">No moves yet.</p>}
+							</div>
+						) : null}
+						{mobilePanel === "plan" ? (
+							<p className="text-sm leading-6 text-[#8a93a8]">
+								{mode === "bot"
+									? botLevel === "Spy"
+										? "Spy randomizes its army and chooses random legal moves."
+										: "This bot scores captures, flag pressure, center control, and rank trades."
+									: "Pass the device after each move. Enemy ranks stay hidden between turns."}
+							</p>
+						) : null}
+					</div>
+				</div>
+			) : null}
 
 			{handoff ? (
 				<div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#05070c]/90 p-4 backdrop-blur-sm">

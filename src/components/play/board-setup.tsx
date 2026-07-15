@@ -350,11 +350,11 @@ export function BoardSetup() {
 				</div>
 			</header>
 
-			<section className="mx-auto grid max-w-[1500px] gap-5 px-4 pb-32 pt-5 lg:px-6 lg:pb-10 xl:grid-cols-[280px_minmax(520px,1fr)_320px] xl:px-8">
-				<aside className="order-3 space-y-4 xl:order-1">
-					<Card className="p-5">
+			<section className="mx-auto grid max-w-[1500px] gap-4 px-3 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-3 sm:px-4 lg:px-6 lg:pb-10 xl:grid-cols-[280px_minmax(520px,1fr)_320px] xl:gap-5 xl:px-8">
+				<aside className="order-1 space-y-3 xl:space-y-4">
+					<Card className="p-3 sm:p-5">
 						<CardTitle>Select mode</CardTitle>
-						<div className="mt-4 grid gap-2">
+						<div className="mt-3 grid grid-cols-2 gap-2 xl:mt-4 xl:grid-cols-1">
 							{[
 								["room", "Create lobby", "Generate a room code."],
 								["join", "Join lobby", "Enter a code from a friend."],
@@ -368,18 +368,18 @@ export function BoardSetup() {
 										setMode(value as Mode);
 										setLocalStep(1);
 									}}
-									className={`rounded-[6px] border p-3 text-left transition-colors ${
+									className={`rounded-[6px] border p-2.5 text-left transition-colors sm:p-3 ${
 										mode === value ? "border-[var(--accent)] bg-[#161f31]" : "border-[#2c3a55] bg-[#0b101b]"
 									}`}
 								>
-									<div className="font-display text-xl font-bold uppercase">{title}</div>
-									<div className="text-xs leading-5 text-[#8a93a8]">{body}</div>
+									<div className="font-display text-base font-bold uppercase sm:text-xl">{title}</div>
+									<div className="mt-1 hidden text-xs leading-5 text-[#8a93a8] sm:block">{body}</div>
 								</button>
 							))}
 						</div>
 					</Card>
 
-					<Card className="p-5">
+					<Card className="p-3 sm:p-5">
 						<CardTitle>{mode === "bot" ? "Bot difficulty" : "Match options"}</CardTitle>
 						<div className="mt-4 space-y-3">
 							{mode === "bot" ? (
@@ -431,8 +431,8 @@ export function BoardSetup() {
 					</Card>
 				</aside>
 
-				<section className="order-1 min-w-0 xl:order-2">
-					<div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+				<section className="order-2 min-w-0">
+					<div className="mb-3 flex flex-wrap items-end justify-between gap-3 sm:mb-4">
 						<div>
 							<div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">
 								<span>Deployment</span>
@@ -446,7 +446,7 @@ export function BoardSetup() {
 									i
 								</button>
 							</div>
-							<h1 className="font-display text-[clamp(42px,5.6vw,76px)] font-extrabold uppercase leading-none">Position your army.</h1>
+							<h1 className="font-display text-[clamp(34px,10vw,76px)] font-extrabold uppercase leading-none">Position your army.</h1>
 						</div>
 						<div className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#8fae6e]">{placed.size} / 21 placed</div>
 					</div>
@@ -465,7 +465,7 @@ export function BoardSetup() {
 						/>
 					</div>
 
-					<div className="rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-2 sm:p-3">
+					<div className="rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-1.5 sm:p-3">
 						<div className="mb-2 flex items-center justify-between px-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[#44506b]">
 							<span>Front line</span>
 							<span>facing the enemy</span>
@@ -566,14 +566,14 @@ export function BoardSetup() {
 					</div>
 				</section>
 
-				<aside className="order-2 space-y-4 xl:order-3">
-					<Card className="p-4 lg:p-5" data-reserve-drop onDragOver={(event) => event.preventDefault()} onDrop={recallToReserve}>
+				<aside className="order-3 space-y-4">
+					<Card className="p-3 lg:p-5" data-reserve-drop onDragOver={(event) => event.preventDefault()} onDrop={recallToReserve}>
 						<div className="flex items-center justify-between gap-3">
 							<CardTitle>Reserve</CardTitle>
 							<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#8fae6e]">{reservePieces.length} left</span>
 						</div>
-						<CardContent className="mt-2 p-0 text-xs lg:text-sm">Tap an empty square to place. Tap a placed piece to recall it. Drag a piece back here too.</CardContent>
-						<div className="mt-3 grid grid-cols-6 gap-1.5 sm:grid-cols-8 lg:mt-4 lg:grid-cols-3 lg:gap-2">
+						<CardContent className="mt-2 p-0 text-xs lg:text-sm">Tap a piece, then tap a square. Tap a placed piece to recall it.</CardContent>
+						<div className="mt-3 grid grid-cols-7 gap-1.5 sm:grid-cols-8 lg:mt-4 lg:grid-cols-3 lg:gap-2">
 							{reservePieces.map((piece) => (
 								<button
 									key={piece.uid}
@@ -612,7 +612,7 @@ export function BoardSetup() {
 				</aside>
 			</section>
 			{/* Sticky command bar. Keeps the primary action reachable on mobile without scrolling. */}
-			<div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#1c2740] bg-[#0e1420]/95 px-4 py-3 backdrop-blur lg:hidden">
+			<div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#1c2740] bg-[#0e1420]/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
 				<div className="mx-auto flex max-w-[1500px] items-center gap-3">
 					<div className="shrink-0 font-mono text-[11px] uppercase leading-tight tracking-[0.14em] text-[#8fae6e]">
 						{placed.size} / 21
