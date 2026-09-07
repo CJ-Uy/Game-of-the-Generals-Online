@@ -24,7 +24,40 @@ import {
 	toBoardCell,
 	viewSquare,
 } from "@/components/play/board-view";
+import { AppHeader } from "@/components/app-header";
+import { Sheet } from "@/components/ui/sheet";
+import { MoveDot, Piece } from "@/components/game/piece";
+import { PlayerRail } from "@/components/game/player-rail";
+import { MatchResult } from "@/components/game/match-result";
+import { MatchMenu } from "@/components/game/match-menu";
+import { CoachLine, useCoachLevel } from "@/components/game/coach";
+import { RankReference } from "@/components/game/rank-reference";
+import { IconCopy, IconHelp, IconMenu } from "@/components/ui/icons";
 import { COLS, FILES, ROWS, battleLosers, oppositeSide, square, type PlayerSide, type PublicPiece, type PublicRoom, type RoomMessage } from "@/lib/game";
+
+/**
+ * Reads the last ply plus the board to work out what just happened in a fight.
+ *
+ * The server never sends enemy ranks mid-match, so this can only report the
+ * shape of the clash — who died — never what the enemy piece was. That is the
+ * same information a player gets at a real table from the arbiter.
+ */
+function readLastClash(plies: string[], side: PlayerSide, byCell: Map<number, PublicPiece>) {
+	const ply = plies.at(-1);
+	if (!ply?.includes("x")) return undefined;
+
+	const move = parseLastMove(plies);
+	if (!move) return undefined;
+
+	const byYou = move.side === side;
+	const survivor = byCell.get(move.to.row * COLS + move.to.col);
+
+	// An empty contested square means equal ranks and both pieces died.
+	if (!survivor) return { byYou, youLost: true, theyLost: true };
+
+	const yoursSurvived = survivor.side === "you";
+	return { byYou, yourRank: yoursSurvived ? survivor.rank : undefined, youLost: !yoursSurvived, theyLost: yoursSurvived };
+}
 
 function animateBoard(update: () => void) {
 	const viewTransition = (document as Document & { startViewTransition?: (callback: () => void) => void }).startViewTransition;
@@ -126,7 +159,6 @@ function ChatPanel({
 	draft,
 	onDraft,
 	onSend,
-	onSurrender,
 	disabled,
 }: {
 	messages: RoomMessage[];
@@ -134,7 +166,6 @@ function ChatPanel({
 	draft: string;
 	onDraft: (value: string) => void;
 	onSend: () => void;
-	onSurrender: () => void;
 	disabled: boolean;
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
@@ -167,11 +198,8 @@ function ChatPanel({
 					),
 				)}
 			</div>
-			<Button variant="outline" size="sm" className="mt-3 w-full" onClick={onSurrender} disabled={disabled}>
-				Surrender
-			</Button>
 			<form
-				className="mt-2 flex gap-2"
+				className="mt-3 flex gap-2"
 				onSubmit={(event) => {
 					event.preventDefault();
 					onSend();
@@ -217,6 +245,11 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const touchDrag = useRef<{ pieceId: number; pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
 	const suppressClick = useRef(false);
 	const [draggingPiece, setDraggingPiece] = useState<number | null>(null);
+	const [showReference, setShowReference] = useState(false);
+	const [menuOpen, setMenuOpen] = useState(false);
+	const [resultOpen, setResultOpen] = useState(false);
+	const [codeCopied, setCodeCopied] = useState(false);
+	const { level: coachLevel, setLevel: setCoachLevel } = useCoachLevel();
 
 	useEffect(() => {
 		setToken(sessionStorage.getItem(`gog:room:${code}:token`) ?? "");
@@ -457,20 +490,27 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const myFallen = boardPieces.filter((piece) => piece.side === "you" && !piece.alive).sort(bySeniority);
 	const foeFallen = boardPieces.filter((piece) => piece.side === "foe" && !piece.alive);
 	const revealFoe = !!room?.state.outcome || replayActive;
-	const statusText = !room
-		? "Loading room"
-		: room.status === "waiting"
-			? "Waiting for opponent"
-			: room.state.outcome
-				? room.state.outcome.winner === room.side
-					? "Victory"
-					: room.state.outcome.winner === "draw"
-						? "Draw"
-						: "Defeat"
-				: myTurn
-					? "Your move"
-					: "Enemy move";
-	const statusTone = room?.state.outcome ? "border-[var(--accent)] bg-[rgba(201,168,93,0.12)] text-[var(--accent)]" : myTurn ? "border-[#8fae6e] bg-[rgba(143,174,110,0.12)] text-[#8fae6e]" : "border-[#7c3f36] bg-[rgba(124,63,54,0.18)] text-[#d98b73]";
+	const outcome = room?.state.outcome ?? null;
+
+	const lastClash = useMemo(
+		() => (replayActive || !room ? undefined : readLastClash(room.state.plies, room.side, byCell)),
+		[byCell, replayActive, room],
+	);
+
+	// Surface the result once, when it lands. Reopening is a deliberate tap.
+	useEffect(() => {
+		if (outcome) setResultOpen(true);
+	}, [outcome]);
+
+	const copyCode = () => {
+		void navigator.clipboard
+			?.writeText(code)
+			.then(() => {
+				setCodeCopied(true);
+				window.setTimeout(() => setCodeCopied(false), 1600);
+			})
+			.catch(() => undefined);
+	};
 	const syncLabel = syncState === "live" ? "Live" : syncState === "reconnecting" ? "Reconnecting" : "Polling";
 
 	if (!token) {
@@ -489,21 +529,30 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 
 	return (
 		<main className="min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)]">
-			<header className="sticky top-0 z-50 flex h-[52px] items-center justify-between gap-3 border-b border-[#1c2740] bg-[#0e1420]/90 px-3 backdrop-blur sm:h-[60px] sm:px-5 md:px-12">
-				<Link href="/" className="flex min-w-0 items-center gap-2.5">
-					<span className="text-[var(--accent)]">★</span>
-					<span className="font-display text-lg font-bold uppercase tracking-[0.07em] md:hidden">GoG Online</span>
-					<span className="hidden truncate font-display text-xl font-bold uppercase tracking-[0.07em] md:inline">Game of the Generals</span>
-				</Link>
-				<div className="flex items-center gap-2">
-					<span className="rounded-[4px] border border-[#2c3a55] bg-[#0b101b] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--accent)]">
-						{code}
+			<AppHeader>
+				<button
+					type="button"
+					onClick={copyCode}
+					title="Copy the room code"
+					className="flex items-center gap-1.5 border border-[var(--line-strong)] bg-[var(--panel)] px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--foreground)] transition-colors hover:border-[var(--ink-muted)]"
+				>
+					{code}
+					<IconCopy size={13} className="text-[var(--ink-muted)]" />
+					<span className="sr-only">{codeCopied ? "Room code copied" : "Copy room code"}</span>
+				</button>
+				{codeCopied ? (
+					<span aria-hidden className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--live)]">
+						Copied
 					</span>
-					<Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-						<Link href="/play">New room</Link>
-					</Button>
-				</div>
-			</header>
+				) : null}
+				<Button variant="ghost" size="sm" aria-label="What beats what" onClick={() => setShowReference(true)}>
+					<IconHelp size={16} />
+					<span aria-hidden className="ml-1.5 hidden sm:inline">Ranks</span>
+				</Button>
+				<Button variant="ghost" size="sm" aria-label="Match menu" onClick={() => setMenuOpen(true)}>
+					<IconMenu size={16} />
+				</Button>
+			</AppHeader>
 
 			<section className="mx-auto grid max-w-[1400px] gap-4 px-2 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-3 sm:px-4 lg:px-6 lg:pb-10 xl:grid-cols-[260px_minmax(0,760px)_340px] xl:gap-5">
 				<aside className="hidden xl:block">
@@ -514,20 +563,51 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 					</div>
 				</aside>
 				<div className="mx-auto w-full max-w-[760px] min-w-0">
-					<div className={`mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[6px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] sm:mb-3 sm:tracking-[0.2em] ${statusTone}`}>
-						<span className="flex items-center gap-2">
-							<span className={`h-2 w-2 rounded-full ${myTurn ? "bg-[#8fae6e]" : "bg-[var(--accent)]"}`} />
-							{statusText}
-						</span>
-						<span className="text-[#8a93a8]">
-							{room?.state.outcome ? room.state.outcome.note : `${syncLabel} · ${room?.side === "gold" ? "Gold" : "Slate"} · Fallen ${myFallen.length} · Taken ${foeFallen.length}`}
-						</span>
-					</div>
-					{error ? <div className="mb-3 rounded-[5px] border border-[#7c3f36] bg-[#2b1716] px-3 py-2 text-sm text-[#d98b73]">{error}</div> : null}
+					<PlayerRail
+						name="Opponent"
+						side={oppositeSide(room?.side ?? "gold")}
+						active={room?.status === "active" && !outcome && !myTurn}
+						waiting={room?.status === "waiting"}
+						fallen={foeFallen}
+						revealFallen={revealFoe}
+						trailing={
+							<span
+								className={`font-mono text-[9px] uppercase tracking-[0.14em] ${syncState === "live" ? "text-[var(--live)]" : syncState === "reconnecting" ? "text-[var(--warn)]" : "text-[var(--ink-faint)]"}`}
+								title={`Connection: ${syncLabel}`}
+							>
+								{syncLabel}
+							</span>
+						}
+					/>
 
-					{room?.state.outcome ? (
-						<div className="mb-3 rounded-[6px] border border-[#1c2740] bg-[#0b101b] p-3">
+					<CoachLine
+						className="border-t-0"
+						onChangeLevel={setCoachLevel}
+						input={{
+							level: coachLevel,
+							phase: outcome ? "over" : "play",
+							yourTurn: !!myTurn,
+							movesPlayed: room?.state.plies.length ?? 0,
+							selectedRank: sel?.side === "you" ? sel.rank : undefined,
+							selectionCanAttack: !!sel && [...targets].some((index) => byCell.get(index)?.side === "foe"),
+							lastClash,
+							outcome,
+							yourSide: room?.side,
+						}}
+					/>
+
+					{error ? (
+						<div role="alert" className="mt-3 border border-[var(--loss)]/50 bg-[var(--loss)]/10 px-3 py-2 text-sm text-[#e0a08c]">
+							{error}
+						</div>
+					) : null}
+
+					{outcome ? (
+						<div className="mt-3 border border-[var(--line)] bg-[var(--panel)] p-3">
 							<div className="flex flex-wrap items-center gap-2">
+								<Button size="sm" onClick={() => setResultOpen(true)}>
+									See result
+								</Button>
 								<Button variant="outline" size="sm" disabled={!replayFrames.length} onClick={() => animateBoard(() => setReplayStep((step) => (step == null ? 0 : null)))}>
 									{replayActive ? "Exit replay" : "Replay"}
 								</Button>
@@ -561,10 +641,19 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 						</div>
 						<div className="relative grid grid-cols-[1.25rem_repeat(9,minmax(0,1fr))] gap-1">
 							{room?.status === "waiting" ? (
-								<div className="pointer-events-none absolute left-6 right-0 top-[12%] z-20 flex justify-center">
-									<div className="rounded-[6px] border border-[rgba(201,168,93,0.55)] bg-[#0e1420]/95 px-4 py-2 text-center shadow-[0_12px_36px_rgba(0,0,0,0.45)]">
-										<div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#8a93a8]">Enemy joins with</div>
-										<div className="font-mono text-2xl font-semibold tracking-[0.22em] text-[var(--accent)]">{code}</div>
+								<div className="pointer-events-none absolute left-6 right-0 top-[10%] z-20 flex justify-center px-2">
+									<div className="pointer-events-auto max-w-[19rem] border border-[var(--line-strong)] bg-[var(--background)]/96 p-4 text-center shadow-[var(--e3)]">
+										<p className="text-sm text-[var(--ink-muted)]">Send this code to whoever you want to play.</p>
+										<button
+											type="button"
+											onClick={copyCode}
+											className="mt-2.5 w-full border border-[var(--line-strong)] bg-[var(--panel)] py-2.5 font-mono text-3xl font-semibold tracking-[0.24em] text-[var(--foreground)] transition-colors hover:border-[var(--accent)]"
+										>
+											{code}
+										</button>
+										<p className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ink-faint)]">
+											{codeCopied ? "Copied to clipboard" : "Tap to copy · waiting for them to join"}
+										</p>
 									</div>
 								</div>
 							) : null}
@@ -585,7 +674,6 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 										const isClashTo = clashPreview?.col === col && clashPreview.row === row;
 										const isSelected = piece != null && piece.id === selected;
 										const showRank = piece?.side === "you" || revealFoe;
-										const glyph = showRank && piece?.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
 
 								return (
 									<button
@@ -620,26 +708,23 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 														: (viewCol + viewRow) % 2 === 0
 														? "border-[var(--board-border)] bg-[var(--board-light)]"
 															: "border-[var(--board-border)] bg-[var(--board-dark)]"
-										} ${piece?.side === "you" && myTurn ? "touch-none" : ""}`}
+										} ${piece?.side === "you" && myTurn ? "touch-none" : ""} ${isArbiterTo ? "gog-clash" : ""}`}
 									>
 										{isClashTo && clashPreview ? (
 											<PieceClashPreview attacker={clashPreview.attacker} defender={clashPreview.defender} />
 										) : piece ? (
 											<span
 												style={{ viewTransitionName: `piece-${piece.id}` } as CSSProperties}
-												className={`pointer-events-none mx-auto flex h-[74%] w-[86%] items-center justify-center overflow-hidden rounded-[4px] border font-bold leading-none ${
-													piece.side === "you"
-														? `border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75 ${boardGlyphSize(glyph)} ${
-																isSelected || draggingPiece === piece.id ? "ring-2 ring-[var(--accent)]" : ""
-															}`
-														: revealFoe
-													? `border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257] text-[#d8e3f4] ${boardGlyphSize(glyph)}`
-													: "border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257]"
-												}`}
+												className="pointer-events-none absolute inset-[7%]"
 											>
-												{showRank && glyph ? <CompactGlyph glyph={glyph} /> : null}
+												<Piece
+													rank={showRank ? piece.rank : undefined}
+													side={piece.side}
+													state={isSelected || draggingPiece === piece.id ? "selected" : "idle"}
+												/>
 											</span>
 										) : null}
+										{isTarget && !isClashTo ? <MoveDot capture={piece?.side === "foe"} /> : null}
 										{(pendingMove?.capture && isPendingTo) || isArbiterTo ? <ArbiterChip key={arbiterCell?.key} /> : null}
 										{piece?.side === "foe" && !isClashTo && !revealFoe ? <GuessBadge tag={tags[piece.id]} /> : null}
 									</button>
@@ -654,11 +739,24 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 								</div>
 							))}
 						</div>
-						<div className="mt-2 flex items-center justify-between gap-2 px-1 font-mono text-[9px] uppercase tracking-[0.2em]">
-							<span className="text-[var(--accent)]/70">{room?.side === "slate" ? "Slate line" : "Gold line"}</span>
-							<span className="truncate text-[#44506b]">{sel?.rank ? `${rankByKey.get(sel.rank)?.name} - pick a square` : ""}</span>
-						</div>
 					</div>
+
+					<PlayerRail
+						className="mt-2"
+						name="You"
+						side={room?.side ?? "gold"}
+						you
+						active={!!myTurn}
+						fallen={myFallen}
+						revealFallen
+						trailing={
+							sel?.rank ? (
+								<span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--accent)]">
+									{rankByKey.get(sel.rank)?.name} · pick a square
+								</span>
+							) : null
+						}
+					/>
 
 					<Card className="mt-4 hidden p-4 sm:block">
 						<div className="grid gap-4 sm:grid-cols-2">
@@ -712,7 +810,6 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 								draft={draft}
 								onDraft={setDraft}
 								onSend={sendDraft}
-								onSurrender={() => void act({ action: "resign" })}
 								disabled={busy || !!room?.state.outcome}
 							/>
 						</Card>
@@ -721,13 +818,8 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 			</section>
 
 			<div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#1c2740] bg-[#0e1420]/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur xl:hidden">
+				{/* The rails already carry turn and casualties; this bar is navigation only. */}
 				<div className="mx-auto grid max-w-[1280px] grid-cols-4 items-center gap-2">
-					<div className="col-span-full min-w-0 font-mono text-[11px] uppercase leading-tight tracking-[0.14em] text-[#8fae6e]">
-						{statusText}
-						<span className="block text-[9px] tracking-[0.12em] text-[#5b647a]">
-							Fallen {myFallen.length} · Taken {foeFallen.length}
-						</span>
-					</div>
 					<Button variant="outline" size="sm" className="w-full px-1" onClick={() => setMobilePanel("ranks")}>
 						Ranks
 					</Button>
@@ -789,7 +881,6 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 								draft={draft}
 								onDraft={setDraft}
 								onSend={sendDraft}
-								onSurrender={() => void act({ action: "resign" })}
 								disabled={busy || !!room?.state.outcome}
 							/>
 						) : null}
@@ -828,6 +919,41 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 					</div>
 				</div>
 			) : null}
+
+			<Sheet open={showReference} onClose={() => setShowReference(false)} title="What beats what" size="lg">
+				<RankReference pieces={pieces} />
+			</Sheet>
+
+			<MatchMenu
+				open={menuOpen}
+				onClose={() => setMenuOpen(false)}
+				onResign={() => void act({ action: "resign" })}
+				canResign={room?.status === "active" && !outcome}
+				coachLevel={coachLevel}
+				onCoachLevel={setCoachLevel}
+				roomCode={code}
+				onCopyCode={copyCode}
+				codeCopied={codeCopied}
+			/>
+
+			<Sheet
+				open={resultOpen && !!outcome}
+				onClose={() => setResultOpen(false)}
+				title="Match over"
+				size="md"
+			>
+				{outcome && room ? (
+					<MatchResult
+						outcome={outcome}
+						side={room.side}
+						pieces={pieces}
+						onReplay={() => {
+							setResultOpen(false);
+							animateBoard(() => setReplayStep(0));
+						}}
+					/>
+				) : null}
+			</Sheet>
 		</main>
 	);
 }

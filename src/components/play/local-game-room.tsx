@@ -7,14 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import {
 	ArbiterChip,
-	CompactGlyph,
 	CommandChain,
 	CapturedGuessTiles,
 	GuessBadge,
 	GuessPicker,
 	PieceClashPreview,
 	type GuessTag,
-	boardGlyphSize,
 	boardIndex,
 	formatPlyForView,
 	parseLastMove,
@@ -23,6 +21,16 @@ import {
 	toBoardCell,
 	viewSquare,
 } from "@/components/play/board-view";
+import { AppHeader } from "@/components/app-header";
+import { Sheet } from "@/components/ui/sheet";
+import { MoveDot, Piece } from "@/components/game/piece";
+import { PlayerRail } from "@/components/game/player-rail";
+import { MatchResult } from "@/components/game/match-result";
+import { MatchMenu } from "@/components/game/match-menu";
+import { CoachLine, useCoachLevel } from "@/components/game/coach";
+import { RankReference } from "@/components/game/rank-reference";
+import { IconHelp, IconMenu } from "@/components/ui/icons";
+import { oppositeSide } from "@/lib/game";
 import {
 	COLS,
 	ROWS,
@@ -80,6 +88,10 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 	const touchDrag = useRef<{ pieceId: number; pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
 	const suppressClick = useRef(false);
 	const [draggingPiece, setDraggingPiece] = useState<number | null>(null);
+	const [showReference, setShowReference] = useState(false);
+	const [menuOpen, setMenuOpen] = useState(false);
+	const [resultOpen, setResultOpen] = useState(false);
+	const { level: coachLevel, setLevel: setCoachLevel } = useCoachLevel();
 
 	useEffect(() => {
 		try {
@@ -133,6 +145,13 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 			targets.add(row * COLS + col);
 		}
 	}
+
+	const resignMatch = () => {
+		if (!state || state.outcome) return;
+		animateBoard(() => setState(resign(state, viewSide)));
+		setVersion((current) => current + 1);
+		setSelected(null);
+	};
 
 	const movePiece = (pieceId: number, col: number, row: number) => {
 		if (!state || !myTurn) return;
@@ -252,8 +271,12 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 	const bySeniority = (a: PublicPiece, b: PublicPiece) => (rankIndex.get(a.rank ?? "FLG") ?? 0) - (rankIndex.get(b.rank ?? "FLG") ?? 0);
 	const myFallen = pieces.filter((piece) => piece.side === "you" && !piece.alive).sort(bySeniority);
 	const foeFallen = pieces.filter((piece) => piece.side === "foe" && !piece.alive);
-	const statusText = !room ? "Missing setup" : room.state.outcome ? (room.state.outcome.winner === viewSide ? "Victory" : "Defeat") : botThinking ? "Bot thinking" : myTurn ? "Your move" : mode === "local" ? "Handover" : "Enemy move";
-	const statusTone = !room ? "border-[#2c3a55] bg-[#0b101b] text-[#8a93a8]" : room.state.outcome ? "border-[var(--accent)] bg-[rgba(201,168,93,0.12)] text-[var(--accent)]" : myTurn ? "border-[#8fae6e] bg-[rgba(143,174,110,0.12)] text-[#8fae6e]" : "border-[#7c3f36] bg-[rgba(124,63,54,0.18)] text-[#d98b73]";
+	const outcome = room?.state.outcome ?? null;
+
+	// Surface the result once, when it lands.
+	useEffect(() => {
+		if (outcome) setResultOpen(true);
+	}, [outcome]);
 
 	if (!room) {
 		return (
@@ -271,21 +294,18 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 
 	return (
 		<main className="min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)]">
-			<header className="sticky top-0 z-50 flex h-[52px] items-center justify-between gap-3 border-b border-[#1c2740] bg-[#0e1420]/90 px-3 backdrop-blur sm:h-[60px] sm:px-5 md:px-12">
-				<Link href="/" className="flex min-w-0 items-center gap-2.5">
-					<span className="text-[var(--accent)]">★</span>
-					<span className="font-display text-lg font-bold uppercase tracking-[0.07em] md:hidden">GoG Online</span>
-					<span className="hidden truncate font-display text-xl font-bold uppercase tracking-[0.07em] md:inline">Game of the Generals</span>
-				</Link>
-				<div className="flex items-center gap-2">
-					<span className="rounded-[4px] border border-[#2c3a55] bg-[#0b101b] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--accent)]">
-						{mode === "local" ? "Pass & play" : botLevel}
-					</span>
-					<Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-						<Link href="/play">New match</Link>
-					</Button>
-				</div>
-			</header>
+			<AppHeader>
+				<span className="border border-[var(--line-strong)] bg-[var(--panel)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ink-muted)]">
+					{mode === "local" ? "Pass & play" : `Bot · ${botLevel}`}
+				</span>
+				<Button variant="ghost" size="sm" aria-label="What beats what" onClick={() => setShowReference(true)}>
+					<IconHelp size={16} />
+					<span aria-hidden className="ml-1.5 hidden sm:inline">Ranks</span>
+				</Button>
+				<Button variant="ghost" size="sm" aria-label="Match menu" onClick={() => setMenuOpen(true)}>
+					<IconMenu size={16} />
+				</Button>
+			</AppHeader>
 
 			<section className="mx-auto grid max-w-[1360px] gap-4 px-2 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-3 sm:px-4 lg:px-6 lg:pb-10 xl:grid-cols-[260px_minmax(0,760px)_300px] xl:gap-5">
 				<aside className="hidden xl:block">
@@ -296,16 +316,39 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 					</div>
 				</aside>
 				<div className="mx-auto w-full max-w-[760px] min-w-0">
-					<div className={`mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[6px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] sm:mb-3 sm:tracking-[0.2em] ${statusTone}`}>
-						<span className="flex items-center gap-2">
-							<span className={`h-2 w-2 rounded-full ${myTurn ? "bg-[#8fae6e]" : "bg-[var(--accent)]"}`} />
-							{statusText}
-						</span>
-						<span className="text-[#8a93a8]">
-							{room.state.outcome ? room.state.outcome.note : `${viewSide === "gold" ? "Gold" : "Slate"} · Fallen ${myFallen.length} · Taken ${foeFallen.length}`}
-						</span>
-					</div>
-					{error ? <div className="mb-3 rounded-[5px] border border-[#7c3f36] bg-[#2b1716] px-3 py-2 text-sm text-[#d98b73]">{error}</div> : null}
+					<PlayerRail
+						name={mode === "bot" ? `Bot · ${botLevel}` : "Other player"}
+						side={oppositeSide(viewSide)}
+						active={!outcome && !myTurn}
+						fallen={foeFallen}
+						revealFallen={!!outcome}
+						trailing={
+							botThinking ? (
+								<span className="wr-arbiter-live font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--accent)]">Thinking</span>
+							) : null
+						}
+					/>
+
+					<CoachLine
+						className="border-t-0"
+						onChangeLevel={setCoachLevel}
+						input={{
+							level: coachLevel,
+							phase: outcome ? "over" : "play",
+							yourTurn: !!myTurn,
+							movesPlayed: room.state.plies.length,
+							selectedRank: sel?.side === "you" ? sel.rank : undefined,
+							selectionCanAttack: !!sel && [...targets].some((index) => byCell.get(index)?.side === "foe"),
+							outcome,
+							yourSide: viewSide,
+						}}
+					/>
+
+					{error ? (
+						<div role="alert" className="mt-3 border border-[var(--loss)]/50 bg-[var(--loss)]/10 px-3 py-2 text-sm text-[#e0a08c]">
+							{error}
+						</div>
+					) : null}
 
 					<div className="rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-1.5 sm:p-3">
 						<div className="mb-2 flex items-center justify-between px-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[#44506b]">
@@ -326,7 +369,6 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 										const isArbiterTo = arbiterCell?.col === col && arbiterCell.row === row;
 										const isClashTo = clashPreview?.col === col && clashPreview.row === row;
 								const showRank = piece?.side === "you" || !!room.state.outcome;
-								const glyph = showRank && piece?.rank ? (rankByKey.get(piece.rank)?.glyph ?? "") : "";
 
 								return (
 									<button
@@ -359,26 +401,23 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 													: (viewCol + viewRow) % 2 === 0
 														? "border-[var(--board-border)] bg-[var(--board-light)]"
 														: "border-[var(--board-border)] bg-[var(--board-dark)]"
-										} ${piece?.side === "you" && myTurn ? "touch-none" : ""}`}
+										} ${piece?.side === "you" && myTurn ? "touch-none" : ""} ${isArbiterTo ? "gog-clash" : ""}`}
 									>
 										{isClashTo && clashPreview ? (
 											<PieceClashPreview attacker={clashPreview.attacker} defender={clashPreview.defender} />
 										) : piece ? (
 											<span
 												style={{ viewTransitionName: `piece-${piece.id}` } as CSSProperties}
-												className={`pointer-events-none mx-auto flex h-[74%] w-[86%] items-center justify-center overflow-hidden rounded-[4px] border font-bold leading-none ${
-													piece.side === "you"
-														? `border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75 ${boardGlyphSize(glyph)} ${
-																piece.id === selected || draggingPiece === piece.id ? "ring-2 ring-[var(--accent)]" : ""
-															}`
-														: showRank
-															? `border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257] text-[#d8e3f4] ${boardGlyphSize(glyph)}`
-															: "border-[#50658a] bg-gradient-to-br from-[#314a79] to-[#203257]"
-												}`}
+												className="pointer-events-none absolute inset-[7%]"
 											>
-												{showRank && glyph ? <CompactGlyph glyph={glyph} /> : null}
+												<Piece
+													rank={showRank ? piece.rank : undefined}
+													side={piece.side}
+													state={piece.id === selected || draggingPiece === piece.id ? "selected" : "idle"}
+												/>
 											</span>
 										) : null}
+										{targets.has(index) && !isClashTo ? <MoveDot capture={piece?.side === "foe"} /> : null}
 										{isArbiterTo ? <ArbiterChip key={arbiterCell?.key} /> : null}
 										{piece?.side === "foe" && !isClashTo && !room.state.outcome ? <GuessBadge tag={tags[piece.id]} /> : null}
 									</button>
@@ -393,11 +432,24 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 								</div>
 							))}
 						</div>
-						<div className="mt-2 flex items-center justify-between gap-2 px-1 font-mono text-[9px] uppercase tracking-[0.2em]">
-							<span className="text-[var(--accent)]/70">{viewSide === "slate" ? "Slate line" : "Gold line"}</span>
-							<span className="truncate text-[#44506b]">{sel?.rank ? `${rankByKey.get(sel.rank)?.name} - pick a square` : ""}</span>
-						</div>
 					</div>
+
+					<PlayerRail
+						className="mt-2"
+						name={mode === "local" ? `Player ${viewSide === "gold" ? "1" : "2"}` : "You"}
+						side={viewSide}
+						you
+						active={!!myTurn}
+						fallen={myFallen}
+						revealFallen
+						trailing={
+							sel?.rank ? (
+								<span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--accent)]">
+									{rankByKey.get(sel.rank)?.name} · pick a square
+								</span>
+							) : null
+						}
+					/>
 
 					<Card className="mt-4 hidden p-4 sm:block">
 						<div className="grid gap-4 sm:grid-cols-2">
@@ -439,13 +491,8 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 			</section>
 
 			<div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#1c2740] bg-[#0e1420]/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur xl:hidden">
+				{/* The rails already carry turn and casualties; this bar is navigation only. */}
 				<div className="mx-auto grid max-w-[1280px] grid-cols-4 items-center gap-2">
-					<div className="col-span-full min-w-0 font-mono text-[11px] uppercase leading-tight tracking-[0.14em] text-[#8fae6e]">
-						{statusText}
-						<span className="block text-[9px] tracking-[0.12em] text-[#5b647a]">
-							Fallen {myFallen.length} · Taken {foeFallen.length}
-						</span>
-					</div>
 					<Button variant="outline" size="sm" className="w-full px-1" onClick={() => setMobilePanel("ranks")}>
 						Ranks
 					</Button>
@@ -541,6 +588,23 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 					</div>
 				</div>
 			) : null}
+
+			<Sheet open={showReference} onClose={() => setShowReference(false)} title="What beats what" size="lg">
+				<RankReference pieces={pieces} />
+			</Sheet>
+
+			<MatchMenu
+				open={menuOpen}
+				onClose={() => setMenuOpen(false)}
+				onResign={resignMatch}
+				canResign={!outcome}
+				coachLevel={coachLevel}
+				onCoachLevel={setCoachLevel}
+			/>
+
+			<Sheet open={resultOpen && !!outcome} onClose={() => setResultOpen(false)} title="Match over" size="md">
+				{outcome ? <MatchResult outcome={outcome} side={viewSide} pieces={pieces} /> : null}
+			</Sheet>
 		</main>
 	);
 }
