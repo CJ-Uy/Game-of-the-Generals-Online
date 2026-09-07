@@ -17,6 +17,7 @@ import {
 	type GuessTag,
 	boardGlyphSize,
 	boardIndex,
+	cellLabel,
 	formatPlyForView,
 	parseLastMove,
 	rankByKey,
@@ -59,6 +60,8 @@ function readLastClash(plies: string[], side: PlayerSide, byCell: Map<number, Pu
 	const yoursSurvived = survivor.side === "you";
 	return { byYou, yourRank: yoursSurvived ? survivor.rank : undefined, youLost: !yoursSurvived, theyLost: yoursSurvived };
 }
+
+const QUICK_LINES = ["Good luck", "Nice move", "Take your time", "Good game", "Rematch?", "Sorry"];
 
 function RoomNotice({
 	code,
@@ -188,6 +191,7 @@ function ChatPanel({
 	draft,
 	onDraft,
 	onSend,
+	onQuickSend,
 	disabled,
 }: {
 	messages: RoomMessage[];
@@ -195,6 +199,7 @@ function ChatPanel({
 	draft: string;
 	onDraft: (value: string) => void;
 	onSend: () => void;
+	onQuickSend: (text: string) => void;
 	disabled: boolean;
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
@@ -227,8 +232,21 @@ function ChatPanel({
 					),
 				)}
 			</div>
+			<div className="mt-3 flex flex-wrap gap-1.5">
+				{QUICK_LINES.map((line) => (
+					<button
+						key={line}
+						type="button"
+						disabled={disabled}
+						onClick={() => onQuickSend(line)}
+						className="border border-[var(--line-strong)] bg-[var(--panel)] px-2 py-1 text-xs text-[var(--foreground)]/85 transition-colors hover:border-[var(--ink-muted)] disabled:opacity-40"
+					>
+						{line}
+					</button>
+				))}
+			</div>
 			<form
-				className="mt-3 flex gap-2"
+				className="mt-2 flex gap-2"
 				onSubmit={(event) => {
 					event.preventDefault();
 					onSend();
@@ -399,11 +417,17 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 		}
 	};
 
+	const sendText = (text: string) => {
+		const clean = text.trim();
+		if (!clean) return;
+		void act({ action: "chat", text: clean });
+	};
+
 	const sendDraft = () => {
-		const text = draft.trim();
-		if (!text) return;
+		if (!draft.trim()) return;
+		const text = draft;
 		setDraft("");
-		void act({ action: "chat", text });
+		sendText(text);
 	};
 
 	const pieces = useMemo(() => room?.state.pieces ?? [], [room]);
@@ -763,7 +787,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 											}
 											onCell(col, row);
 										}}
-											aria-label={`${viewSquare(room?.side ?? "gold", viewCol, viewRow)}${piece?.side === "you" ? ` ${piece.rank}` : piece ? " enemy" : ""}`}
+											aria-label={cellLabel(viewSquare(room?.side ?? "gold", viewCol, viewRow), piece, showRank, isTarget)}
 										className={`relative aspect-square rounded-[4px] border transition-colors ${
 											isTarget
 												? "border-[rgba(201,168,93,0.55)] bg-[rgba(201,168,93,0.12)]"
@@ -876,6 +900,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 								draft={draft}
 								onDraft={setDraft}
 								onSend={sendDraft}
+								onQuickSend={sendText}
 								disabled={busy || !!room?.state.outcome}
 							/>
 						</Card>
@@ -947,6 +972,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 								draft={draft}
 								onDraft={setDraft}
 								onSend={sendDraft}
+								onQuickSend={sendText}
 								disabled={busy || !!room?.state.outcome}
 							/>
 						) : null}

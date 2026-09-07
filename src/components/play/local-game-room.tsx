@@ -14,6 +14,7 @@ import {
 	PieceClashPreview,
 	type GuessTag,
 	boardIndex,
+	cellLabel,
 	formatPlyForView,
 	parseLastMove,
 	rankByKey,
@@ -416,7 +417,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 											}
 											onCell(col, row);
 										}}
-											aria-label={`${viewSquare(viewSide, viewCol, viewRow)}${piece?.side === "you" ? ` ${piece.rank}` : piece ? " enemy" : ""}`}
+											aria-label={cellLabel(viewSquare(viewSide, viewCol, viewRow), piece, showRank, targets.has(index))}
 										className={`relative aspect-square rounded-[4px] border transition-colors ${
 											targets.has(index)
 												? "border-[rgba(201,168,93,0.55)] bg-[rgba(201,168,93,0.12)]"

@@ -253,6 +253,19 @@ export function CapturedGuessTiles({
 	);
 }
 
+/**
+ * What a screen reader should hear on a square. Never leaks a hidden rank:
+ * an enemy piece is "enemy piece" until the match reveals it, exactly like
+ * the visual treatment.
+ */
+export function cellLabel(square: string, piece: PublicPiece | undefined, showRank: boolean, isTarget: boolean) {
+	const target = isTarget ? ", can move here" : "";
+	if (!piece) return `${square}, empty${target}`;
+	if (piece.side === "you") return `${square}, your ${rankByKey.get(piece.rank ?? "FLG")?.name ?? "piece"}${target}`;
+	if (showRank && piece.rank) return `${square}, enemy ${rankByKey.get(piece.rank)?.name}${target}`;
+	return `${square}, enemy piece${target}`;
+}
+
 export function rankName(key?: RankKey) {
 	return key ? rankByKey.get(key)?.name : undefined;
 }
