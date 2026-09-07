@@ -2,33 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { WarBoard } from "@/components/home/war-board";
+import { ranks as rankTable, type RankKey } from "@/lib/game";
+import { Piece } from "@/components/game/piece";
 
-const ranks = [
-	["★★★★★", "5-Star General", "x 1"],
-	["★★★★", "4-Star General", "x 1"],
-	["★★★", "3-Star General", "x 1"],
-	["★★", "2-Star General", "x 1"],
-	["★", "1-Star General", "x 1"],
-	["▲▲▲", "Colonel", "x 1"],
-	["▲▲", "Lt. Colonel", "x 1"],
-	["▲", "Major", "x 1"],
-	["◆◆◆", "Captain", "x 1"],
-	["◆◆", "1st Lieutenant", "x 1"],
-	["◆", "2nd Lieutenant", "x 1"],
-	["∧∧∧", "Sergeant", "x 1"],
-	["∧", "Private", "x 6"],
-	["◉", "Spy", "x 2"],
-	["⚑", "Flag", "x 1"],
-];
+// Strongest first: on this section the order itself is the rule.
+const ladder = rankTable.map((rank) => ({ key: rank.key, name: rank.name, count: rank.count }));
 
 const playModes = [
-	["Solo Drill", "Practice against an AI commander.", "AI"],
-	["Pass & Play", "Two players on one device.", "Local"],
-	["Private Room", "Share a room code with a friend.", "Online"],
+	["Solo drill", "Practise against the arbiter. Four difficulty tiers, no waiting.", "vs computer"],
+	["Pass & play", "Two commanders, one device. Hand it over when prompted.", "same screen"],
+	["Private room", "Get a four-letter code and send it to whoever you want to beat.", "online"],
 ];
 
 const shopItems = [
@@ -61,6 +47,19 @@ function Modal({
 				<div className="p-5 md:p-7">{children}</div>
 			</div>
 		</div>
+	);
+}
+
+function Inversion({ attacker, defender, text }: { attacker: RankKey; defender: RankKey; text: string }) {
+	return (
+		<p className="flex items-center gap-3 text-[15px] leading-6 text-[#ede8da]">
+			<span className="flex flex-none items-center gap-1.5">
+				<Piece rank={attacker} side="you" scale="card" />
+				<span aria-hidden className="font-mono text-xs text-[var(--live)]">&gt;</span>
+				<Piece rank={defender} side="you" scale="card" />
+			</span>
+			{text}
+		</p>
 	);
 }
 
@@ -310,48 +309,67 @@ export function HomeExperience() {
 				</div>
 			</section>
 
-			<section id="command" className="border-t border-[#1c2740] bg-[#0b101b]">
+			<section id="command" className="border-t border-[var(--line)] bg-[var(--panel)]">
 				<div className="mx-auto max-w-6xl px-5 py-20 md:px-12 md:py-28">
-					<div className="mb-9 flex flex-wrap items-end justify-between gap-4">
-						<div>
-							<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">{"//"} Chain of command</p>
-							<h2 className="font-display text-[clamp(36px,5vw,64px)] font-extrabold uppercase leading-none">
-								Fifteen ranks. One traitor logic.
-							</h2>
-						</div>
-						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#5b647a]">21 pieces per side</p>
+					<div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+						<h2 className="max-w-[16ch] font-display text-[clamp(36px,5vw,64px)] font-extrabold uppercase leading-[0.92]">
+							Fifteen ranks. Two break the order.
+						</h2>
+						<p className="pb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-faint)]">21 pieces per side</p>
 					</div>
-					<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
-						{ranks.map(([glyph, name, count]) => (
-							<Card key={name} className="p-4 transition-colors hover:border-[var(--accent)]">
-								<div className="mb-2 text-[15px] leading-none tracking-[2px] text-[var(--accent)]">{glyph}</div>
-								<div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#ede8da]">{name}</div>
-								<div className="mt-2 font-mono text-[9px] text-[#5b647a]">{count}</div>
-							</Card>
+
+					<ol className="mt-10 grid gap-x-10 border-t border-[var(--line-strong)] sm:grid-cols-2 lg:grid-cols-3">
+						{ladder.map((rank, index) => (
+							<li
+								key={rank.key}
+								className="flex items-center gap-3 border-b border-[var(--line)] py-2.5"
+							>
+								<span className="w-5 flex-none font-mono text-[10px] tabular-nums text-[var(--ink-faint)]">
+									{String(index + 1).padStart(2, "0")}
+								</span>
+								<Piece rank={rank.key} side="you" scale="card" className="flex-none" />
+								<span className="min-w-0 flex-1 truncate text-sm text-[#ede8da]">{rank.name}</span>
+								<span className="flex-none font-mono text-[11px] tabular-nums text-[var(--ink-muted)]">×{rank.count}</span>
+							</li>
 						))}
-					</div>
-					<div className="mt-6 flex flex-wrap gap-2">
-						<Badge>The spy kills every officer</Badge>
-						<Badge>Only a private kills a spy</Badge>
-						<Badge>The flag beats only the other flag</Badge>
+					</ol>
+
+					<div className="mt-10 grid gap-x-10 gap-y-4 sm:grid-cols-2">
+						<p className="text-[15px] leading-7 text-[#c3beb2]">
+							Higher rank wins. Equal ranks kill each other. Everything above obeys that — and then two pieces
+							refuse to.
+						</p>
+						<div className="space-y-3">
+							<Inversion attacker="SPY" defender="G5" text="A Spy kills every officer, up to the 5-Star General." />
+							<Inversion attacker="PVT" defender="SPY" text="A Private kills the Spy. Nothing else can, and you hold six." />
+						</div>
 					</div>
 				</div>
 			</section>
 
 			<section id="deploy" className="mx-auto max-w-6xl px-5 py-20 md:px-12 md:py-28">
-				<h2 className="mb-10 font-display text-[clamp(36px,5vw,64px)] font-extrabold uppercase leading-none">Choose your front.</h2>
-				<div className="grid gap-4 md:grid-cols-3">
+				<h2 className="font-display text-[clamp(36px,5vw,64px)] font-extrabold uppercase leading-none">Choose your front.</h2>
+				<ul className="mt-10 border-t border-[var(--line-strong)]">
 					{playModes.map(([title, body, tag]) => (
-						<Card key={title} className="flex min-h-56 flex-col p-6 transition-colors hover:border-[var(--accent)]">
-							<div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[#5b647a]">{tag}</div>
-							<CardTitle>{title}</CardTitle>
-							<CardContent className="mt-3">{body}</CardContent>
-							<Link className="mt-auto pt-6 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--accent)]" href="/play">
-								Set up board
+						<li key={title} className="border-b border-[var(--line)]">
+							<Link
+								href="/play"
+								className="group flex flex-col gap-2 py-6 transition-colors hover:bg-[var(--panel)] md:flex-row md:items-baseline md:gap-8 md:px-3"
+							>
+								<span className="font-display text-[clamp(26px,3.2vw,38px)] font-bold uppercase leading-none md:w-[9ch] md:flex-none">
+									{title}
+								</span>
+								<span className="flex-1 text-[15px] leading-7 text-[#c3beb2]">{body}</span>
+								<span className="flex flex-none items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-faint)]">
+									{tag}
+									<span aria-hidden className="transition-transform group-hover:translate-x-1 text-[var(--ink-muted)]">
+										&rarr;
+									</span>
+								</span>
 							</Link>
-						</Card>
+						</li>
 					))}
-				</div>
+				</ul>
 			</section>
 
 			<footer className="border-t border-[#1c2740] bg-[#0b101b]">

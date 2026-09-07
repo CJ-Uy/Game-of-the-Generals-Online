@@ -141,9 +141,6 @@ export default function AboutPage() {
 				<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_75%_20%,rgba(201,168,93,0.1),transparent_60%)]" />
 				<div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 md:grid-cols-[1.1fr_0.9fr] md:px-12 md:py-28">
 					<div>
-						<p className="wr-rise mb-5 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">
-							Salpakan · Filipino strategy classic · Est. 1970
-						</p>
 						<h1 className="wr-rise font-display text-[clamp(44px,7vw,92px)] font-extrabold uppercase leading-[0.92] tracking-normal" style={{ animationDelay: "0.06s" }}>
 							Every piece
 							<br />
@@ -184,25 +181,29 @@ export default function AboutPage() {
 							Half a century later it is still played across kitchen tables, classrooms, and barracks. This is that game, dealt onto a browser tab, with a neutral arbiter that never leaks a rank.
 						</p>
 					</div>
-					<div className="mt-10 border-l-2 border-[var(--accent)] pl-5">
-						<p className="font-display text-2xl font-bold uppercase leading-tight text-[#ede8da]">
+					<figure className="mt-10 border-t border-[var(--line-strong)] pt-5">
+						<blockquote className="font-display text-3xl font-bold uppercase leading-[1.05] text-[#ede8da]">
 							&ldquo;Chess with a poker face.&rdquo;
-						</p>
-						<p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#5b647a]">How players have described it for fifty years</p>
-					</div>
+						</blockquote>
+						<figcaption className="mt-2.5 text-sm text-[var(--ink-muted)]">
+							How players have described it for fifty years.
+						</figcaption>
+					</figure>
 				</div>
 			</section>
 
 			{/* How it plays: asymmetric pillars. One tall feature, two stacked. */}
 			<section className="mx-auto max-w-6xl px-5 py-20 md:px-12 md:py-28">
-				<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">{"//"} How the war works</p>
 				<h2 className="mb-10 max-w-2xl font-display text-[clamp(32px,4.6vw,58px)] font-extrabold uppercase leading-none">
 					Three rules run the whole battle.
 				</h2>
 				<div className="grid gap-4 md:grid-cols-3">
 					<Card className="flex flex-col justify-between p-7 md:row-span-2 md:min-h-[22rem]">
 						<div>
-							<div className="font-display text-6xl font-extrabold leading-none text-[var(--accent)]">01</div>
+							<div className="flex items-center gap-3 border-b border-[var(--line)] pb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ink-faint)]">
+								<span className="tabular-nums">Step 1</span>
+								<span className="text-[var(--ink-faint)]/50">of 3</span>
+							</div>
 							<CardTitle className="mt-5">{pillars[0].label}</CardTitle>
 							<CardContent className="mt-4 leading-7">{pillars[0].body}</CardContent>
 						</div>
@@ -216,13 +217,19 @@ export default function AboutPage() {
 						</div>
 					</Card>
 					<Card className="p-7">
-						<div className="font-display text-4xl font-extrabold leading-none text-[var(--accent)]">02</div>
-						<CardTitle className="mt-4">{pillars[1].label}</CardTitle>
+						<div className="flex items-center gap-3 border-b border-[var(--line)] pb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ink-faint)]">
+							<span className="tabular-nums">Step 2</span>
+							<span className="text-[var(--ink-faint)]/50">of 3</span>
+						</div>
+						<CardTitle className="mt-5">{pillars[1].label}</CardTitle>
 						<CardContent className="mt-3 leading-7">{pillars[1].body}</CardContent>
 					</Card>
 					<Card className="p-7">
-						<div className="font-display text-4xl font-extrabold leading-none text-[var(--accent)]">03</div>
-						<CardTitle className="mt-4">{pillars[2].label}</CardTitle>
+						<div className="flex items-center gap-3 border-b border-[var(--line)] pb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ink-faint)]">
+							<span className="tabular-nums">Step 3</span>
+							<span className="text-[var(--ink-faint)]/50">of 3</span>
+						</div>
+						<CardTitle className="mt-5">{pillars[2].label}</CardTitle>
 						<CardContent className="mt-3 leading-7">{pillars[2].body}</CardContent>
 					</Card>
 				</div>
@@ -272,7 +279,6 @@ export default function AboutPage() {
 			<section id="studio" className="mx-auto max-w-6xl px-5 py-20 md:px-12 md:py-28">
 				<div className="grid gap-12 md:grid-cols-[0.9fr_1.1fr] md:items-start">
 					<div>
-						<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)]">The makers</p>
 						<h2 className="font-display text-[clamp(38px,6vw,84px)] font-extrabold uppercase leading-[0.92]">
 							Aligway
 							<br />

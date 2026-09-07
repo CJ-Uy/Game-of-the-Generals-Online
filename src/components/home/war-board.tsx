@@ -1,69 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import { battleLosers, ranks as rankTable, type RankKey } from "@/lib/game";
 
 const COLS = 9;
 const ROWS = 8;
 
-const GLYPHS = {
-	G5: "★★★★★",
-	G4: "★★★★",
-	G3: "★★★",
-	G2: "★★",
-	G1: "★",
-	COL: "▲▲▲",
-	LTC: "▲▲",
-	MAJ: "▲",
-	CPT: "◆◆◆",
-	LT1: "◆◆",
-	LT2: "◆",
-	SGT: "∧∧∧",
-	PVT: "∧",
-	SPY: "◉",
-	FLG: "⚑",
-} as const;
+// Derived from src/lib/game.ts so the demo can never drift from the real rules.
+const GLYPHS = Object.fromEntries(rankTable.map((rank) => [rank.key, rank.glyph])) as Record<RankKey, string>;
+const ARMY: RankKey[] = rankTable.flatMap((rank) => Array.from({ length: rank.count }, () => rank.key));
 
-const RANK_NUM = {
-	G5: 15,
-	G4: 14,
-	G3: 13,
-	G2: 12,
-	G1: 11,
-	COL: 10,
-	LTC: 9,
-	MAJ: 8,
-	CPT: 7,
-	LT1: 6,
-	LT2: 5,
-	SGT: 4,
-	PVT: 3,
-} as const;
-
-const RANKS = [
-	"G5",
-	"G4",
-	"G3",
-	"G2",
-	"G1",
-	"COL",
-	"LTC",
-	"MAJ",
-	"CPT",
-	"LT1",
-	"LT2",
-	"SGT",
-	"PVT",
-	"PVT",
-	"PVT",
-	"PVT",
-	"PVT",
-	"PVT",
-	"SPY",
-	"SPY",
-	"FLG",
-] as const;
-
-type Rank = (typeof RANKS)[number];
+type Rank = RankKey;
 type Side = "gold" | "slate";
 type Duel = { col: number; row: number; phase: "landing" | "arbiter" };
 type Mark = "★" | "◉" | "∧" | "⚑";
@@ -123,7 +70,7 @@ function newGame(war: number): GameState {
 	const pieces: Piece[] = [];
 
 	function deal(side: Side, rows: number[], idBase: number) {
-		const ranks = shuffle(RANKS, random);
+		const ranks = shuffle(ARMY, random);
 		const cells = shuffle(
 			rows.flatMap((row) => Array.from({ length: COLS }, (_, col) => ({ col, row }))),
 			random,
@@ -159,15 +106,11 @@ function newGame(war: number): GameState {
 }
 
 function resolveBattle(attacker: Piece, defender: Piece) {
-	if (attacker.rank === "FLG") return defender.rank === "FLG" ? [defender.id] : [attacker.id];
-	if (defender.rank === "FLG") return [defender.id];
-	if (attacker.rank === defender.rank) return [attacker.id, defender.id];
-	if (attacker.rank === "SPY") return defender.rank === "PVT" ? [attacker.id] : [defender.id];
-	if (defender.rank === "SPY") return attacker.rank === "PVT" ? [defender.id] : [attacker.id];
-
-	return RANK_NUM[attacker.rank as keyof typeof RANK_NUM] > RANK_NUM[defender.rank as keyof typeof RANK_NUM]
-		? [defender.id]
-		: [attacker.id];
+	const losers = battleLosers(attacker.rank, defender.rank);
+	const dead: number[] = [];
+	if (losers.includes("att")) dead.push(attacker.id);
+	if (losers.includes("def")) dead.push(defender.id);
+	return dead;
 }
 
 function findPieceAt(pieces: Piece[], col: number, row: number) {
