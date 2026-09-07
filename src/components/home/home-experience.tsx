@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { WarBoard } from "@/components/home/war-board";
+import { SiteFooter } from "@/components/site-footer";
 import { ranks as rankTable, type RankKey } from "@/lib/game";
 import { Piece } from "@/components/game/piece";
 
@@ -401,6 +402,7 @@ export function HomeExperience() {
 
 			{modal === "tutorial" ? <TutorialModal onClose={() => setModal(null)} /> : null}
 			{modal === "shop" ? <ShopModal onClose={() => setModal(null)} /> : null}
+			<SiteFooter />
 		</main>
 	);
 }

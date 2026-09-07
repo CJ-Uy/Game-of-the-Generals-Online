@@ -3,9 +3,10 @@ import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { RankReference } from "@/components/game/rank-reference";
+import { SiteFooter } from "@/components/site-footer";
 
 export const metadata: Metadata = {
-	title: "How to play Game of the Generals",
+	title: "How to play",
 	description:
 		"The rules of Salpakan in five minutes: hidden ranks, one square a turn, an arbiter who only announces the winner, and the two pieces that break the chain of command.",
 };
@@ -84,7 +85,7 @@ export default function HowToPlayPage() {
 					</ol>
 				</section>
 
-				<section className="mt-14">
+				<section id="what-beats-what" className="mt-14 scroll-mt-20">
 					<h2 className="font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-none">What beats what</h2>
 					<p className="mt-4 max-w-[62ch] text-[15px] leading-7 text-[#c3beb2]">
 						Higher rank wins — with two exceptions that decide most games. This is the same reference you can open
@@ -131,6 +132,8 @@ export default function HowToPlayPage() {
 					</div>
 				</section>
 			</article>
+
+			<SiteFooter />
 		</main>
 	);
 }

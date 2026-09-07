@@ -28,9 +28,24 @@ const karla = Karla({
 	subsets: ["latin"],
 });
 
+const DESCRIPTION =
+	"Play Salpakan, the Filipino strategy classic, free in your browser. Twenty-one hidden pieces each, one flag, no account needed.";
+
 export const metadata: Metadata = {
-	title: "Game of the Generals Online",
-	description: "Play Salpakan, the Filipino strategy classic, online.",
+	metadataBase: new URL("https://gogo.cjuy.dev"),
+	title: {
+		default: "Game of the Generals Online",
+		template: "%s · Game of the Generals Online",
+	},
+	description: DESCRIPTION,
+	applicationName: "Game of the Generals Online",
+	openGraph: {
+		type: "website",
+		siteName: "Game of the Generals Online",
+		title: "Game of the Generals Online",
+		description: DESCRIPTION,
+	},
+	twitter: { card: "summary_large_image", title: "Game of the Generals Online", description: DESCRIPTION },
 };
 
 export default function RootLayout({

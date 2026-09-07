@@ -2,31 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { ranks as rankTable } from "@/lib/game";
+import { SiteFooter } from "@/components/site-footer";
 
 export const metadata: Metadata = {
-	title: "About · Game of the Generals Online",
+	title: "About",
 	description:
 		"The story of Salpakan, the Filipino strategy classic, and Aligway Studios, the crew building it for the web.",
 };
 
-// High rank to low. The order is the food chain the whole game hangs on.
-const ranks = [
-	["★★★★★", "5-Star General"],
-	["★★★★", "4-Star General"],
-	["★★★", "3-Star General"],
-	["★★", "2-Star General"],
-	["★", "1-Star General"],
-	["▲▲▲", "Colonel"],
-	["▲▲", "Lt. Colonel"],
-	["▲", "Major"],
-	["◆◆◆", "Captain"],
-	["◆◆", "1st Lieutenant"],
-	["◆", "2nd Lieutenant"],
-	["∧∧∧", "Sergeant"],
-	["∧", "Private"],
-	["◉", "Spy"],
-	["⚑", "Flag"],
-];
+// High rank to low, straight from the canonical table in lib/game.
+const ranks = rankTable.map((rank) => [rank.glyph, rank.name] as const);
 
 const upsets = [
 	{
@@ -342,6 +328,7 @@ export default function AboutPage() {
 					</div>
 				</div>
 			</footer>
+			<SiteFooter />
 		</main>
 	);
 }
