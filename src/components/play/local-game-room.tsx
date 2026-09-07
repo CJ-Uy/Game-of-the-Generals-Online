@@ -33,6 +33,7 @@ import { useBoardKeys } from "@/components/game/use-board-keys";
 import { RankReference } from "@/components/game/rank-reference";
 import { IconHelp, IconMenu } from "@/components/ui/icons";
 import { oppositeSide } from "@/lib/game";
+import { clearLive, readLive, writeLive } from "@/lib/live-match";
 import {
 	COLS,
 	ROWS,
@@ -57,41 +58,6 @@ function animateBoard(update: () => void) {
 
 export const LOCAL_MATCH_KEY = "gog:local-match:v1";
 export const BOT_MATCH_KEY = "gog:bot-match:v1";
-
-/**
- * A match in progress, so a refresh does not silently restart it. The keys
- * above hold the *starting* loadouts; these hold the live board.
- */
-const LIVE_KEY = { local: "gog:local-live:v1", bot: "gog:bot-live:v1" } as const;
-
-type LiveSnapshot = { state: RoomState; viewSide: PlayerSide; handoff: PlayerSide | null; botLevel: string };
-
-function readLive(mode: "local" | "bot"): LiveSnapshot | null {
-	try {
-		const raw = sessionStorage.getItem(LIVE_KEY[mode]);
-		if (!raw) return null;
-		const saved = JSON.parse(raw) as Partial<LiveSnapshot>;
-		// Guard the shape: a stale or truncated snapshot must not wedge the board.
-		const pieces = saved.state?.pieces;
-		if (!Array.isArray(pieces) || pieces.length === 0 || !saved.state?.turn) return null;
-		return {
-			state: saved.state,
-			viewSide: saved.viewSide === "slate" ? "slate" : "gold",
-			handoff: saved.handoff === "gold" || saved.handoff === "slate" ? saved.handoff : null,
-			botLevel: typeof saved.botLevel === "string" ? saved.botLevel : "Sergeant",
-		};
-	} catch {
-		return null;
-	}
-}
-
-function clearLive(mode: "local" | "bot") {
-	try {
-		sessionStorage.removeItem(LIVE_KEY[mode]);
-	} catch {
-		// Non-fatal.
-	}
-}
 
 function makeState(gold: unknown, slate: unknown): RoomState | null {
 	const goldPieces = makeSidePieces("gold", gold);
@@ -161,11 +127,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 	// Persist the live board so a refresh resumes instead of restarting.
 	useEffect(() => {
 		if (!state) return;
-		try {
-			sessionStorage.setItem(LIVE_KEY[mode], JSON.stringify({ state, viewSide, handoff, botLevel } satisfies LiveSnapshot));
-		} catch {
-			// Storage full or blocked: the match simply will not survive a refresh.
-		}
+		writeLive(mode, { state, viewSide, handoff, botLevel });
 	}, [state, viewSide, handoff, botLevel, mode]);
 
 	const rematch = () => {

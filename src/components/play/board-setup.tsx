@@ -15,6 +15,7 @@ import { COLS, GUEST_LOADOUT_KEY, ranks, type RankKey } from "@/lib/game";
 import { formationLoadout, formations } from "@/lib/formations";
 import { rankShort } from "@/lib/coach";
 import { MAX_CALLSIGN, cleanCallsign, loadCallsign, randomCallsign, saveCallsign } from "@/lib/identity";
+import { clearLive, describeLive, type LiveMode } from "@/lib/live-match";
 import { BOT_MATCH_KEY, LOCAL_MATCH_KEY } from "@/components/play/local-game-room";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +80,7 @@ export function BoardSetup() {
 	const [pickerZone, setPickerZone] = useState<number | null>(null);
 	const [draggingUid, setDraggingUid] = useState<string | null>(null);
 	const [callsign, setCallsign] = useState("");
+	const [resumable, setResumable] = useState<{ mode: LiveMode; moves: number; label: string } | null>(null);
 
 	const loadedLoadout = useRef(false);
 	const touchDrag = useRef<{ uid: string; pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
@@ -275,6 +277,15 @@ export function BoardSetup() {
 
 	useEffect(() => {
 		setCallsign(loadCallsign());
+		// Offer the most advanced unfinished match on this device.
+		const found = (["bot", "local"] as LiveMode[])
+			.map((mode) => {
+				const info = describeLive(mode);
+				return info ? { mode, ...info } : null;
+			})
+			.filter((item): item is { mode: LiveMode; moves: number; label: string } => item !== null)
+			.sort((a, b) => b.moves - a.moves)[0];
+		setResumable(found ?? null);
 	}, []);
 
 	useEffect(() => {
@@ -357,6 +368,33 @@ export function BoardSetup() {
 						style={{ width: `${(placed.size / tray.length) * 100}%` }}
 					/>
 				</div>
+
+				{resumable ? (
+					<div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 border border-[var(--line-strong)] bg-[var(--panel)] px-4 py-3">
+						<div className="min-w-0 flex-1">
+							<p className="text-sm font-medium">You have a match in progress</p>
+							<p className="mt-0.5 text-xs text-[var(--ink-muted)]">
+								{resumable.label} · <span className="tabular-nums">{resumable.moves}</span>{" "}
+								{resumable.moves === 1 ? "move" : "moves"} played
+							</p>
+						</div>
+						<div className="flex flex-none gap-2">
+							<Button size="sm" asChild>
+								<Link href={`/play/${resumable.mode}`}>Resume</Link>
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									clearLive(resumable.mode);
+									setResumable(null);
+								}}
+							>
+								Discard
+							</Button>
+						</div>
+					</div>
+				) : null}
 
 				<CoachLine
 					className="mt-4"
