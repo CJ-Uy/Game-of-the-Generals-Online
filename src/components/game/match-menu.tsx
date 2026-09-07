@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
-import { IconCheck, IconCopy, IconResign } from "@/components/ui/icons";
+import { IconCheck, IconCopy, IconResign, IconShare } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import type { CoachLevel } from "@/lib/coach";
 
@@ -34,6 +34,7 @@ export function MatchMenu({
 	onCoachLevel,
 	roomCode,
 	onCopyCode,
+	onShareInvite,
 	codeCopied,
 }: {
 	open: boolean;
@@ -44,6 +45,7 @@ export function MatchMenu({
 	onCoachLevel: (level: CoachLevel) => void;
 	roomCode?: string;
 	onCopyCode?: () => void;
+	onShareInvite?: () => void;
 	codeCopied?: boolean;
 }) {
 	const [confirming, setConfirming] = useState(false);
@@ -121,6 +123,12 @@ export function MatchMenu({
 								)}
 							</span>
 						</button>
+						{onShareInvite ? (
+							<Button variant="outline" size="sm" className="mt-2 w-full" onClick={onShareInvite}>
+								<IconShare size={15} />
+								<span className="ml-2">Send an invite link</span>
+							</Button>
+						) : null}
 					</section>
 				) : null}
 

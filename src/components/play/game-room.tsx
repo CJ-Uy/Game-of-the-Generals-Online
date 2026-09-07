@@ -34,7 +34,7 @@ import { MatchMenu } from "@/components/game/match-menu";
 import { CoachLine, useCoachLevel } from "@/components/game/coach";
 import { useBoardKeys } from "@/components/game/use-board-keys";
 import { RankReference } from "@/components/game/rank-reference";
-import { IconCopy, IconHelp, IconMenu, IconSpinner } from "@/components/ui/icons";
+import { IconCopy, IconHelp, IconMenu, IconShare, IconSpinner } from "@/components/ui/icons";
 import { COLS, FILES, ROWS, battleLosers, oppositeSide, square, type PlayerSide, type PublicPiece, type PublicRoom, type RoomMessage } from "@/lib/game";
 
 /**
@@ -573,6 +573,28 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 		}
 	}, [room?.status, outcome]);
 
+	const inviteUrl = typeof window === "undefined" ? "" : `${window.location.origin}/play?join=${code}`;
+
+	const shareInvite = async () => {
+		// Web Share is the right affordance on a phone, which is where a code
+		// actually gets sent. Everywhere else, copying the link is the fallback.
+		if (navigator.share) {
+			try {
+				await navigator.share({ title: "Game of the Generals", text: `Join my match — room ${code}`, url: inviteUrl });
+				return;
+			} catch {
+				// Cancelled or unsupported; fall through to the clipboard.
+			}
+		}
+		try {
+			await navigator.clipboard?.writeText(inviteUrl);
+			setCodeCopied(true);
+			window.setTimeout(() => setCodeCopied(false), 1600);
+		} catch {
+			// Nothing more to try; the code is on screen to type manually.
+		}
+	};
+
 	const copyCode = () => {
 		void navigator.clipboard
 			?.writeText(code)
@@ -752,8 +774,12 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 										>
 											{code}
 										</button>
+										<Button size="sm" className="mt-2.5 w-full" onClick={() => void shareInvite()}>
+											<IconShare size={15} />
+											<span className="ml-2">Send an invite link</span>
+										</Button>
 										<p className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ink-faint)]">
-											{codeCopied ? "Copied to clipboard" : "Tap to copy · waiting for them to join"}
+											{codeCopied ? "Link copied" : "Waiting for them to join"}
 										</p>
 									</div>
 								</div>
@@ -1039,6 +1065,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 				onCoachLevel={setCoachLevel}
 				roomCode={code}
 				onCopyCode={copyCode}
+				onShareInvite={() => void shareInvite()}
 				codeCopied={codeCopied}
 			/>
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { BoardSetup } from "@/components/play/board-setup";
 
 export const metadata: Metadata = {
@@ -7,5 +8,11 @@ export const metadata: Metadata = {
 };
 
 export default function PlayPage() {
-	return <BoardSetup />;
+	// useSearchParams (for ?join=CODE invite links) needs a boundary or the
+	// whole route opts out of prerendering.
+	return (
+		<Suspense>
+			<BoardSetup />
+		</Suspense>
+	);
 }

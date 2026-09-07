@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { AppHeader } from "@/components/app-header";
@@ -64,6 +64,7 @@ function shuffle<T>(items: T[]) {
 
 export function BoardSetup() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const tray = useMemo(makeTray, []);
 	const trayIds = useMemo(() => new Set(tray.map((piece) => piece.uid)), [tray]);
 	const { level: coachLevel, setLevel: setCoachLevel } = useCoachLevel();
@@ -274,6 +275,14 @@ export function BoardSetup() {
 		sessionStorage.setItem(LOCAL_MATCH_KEY, JSON.stringify({ gold: JSON.parse(gold), slate: placement }));
 		router.push("/play/local");
 	};
+
+	useEffect(() => {
+		const invited = (searchParams.get("join") ?? "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
+		if (invited.length === 4) {
+			setMode("join");
+			setJoinCode(invited);
+		}
+	}, [searchParams]);
 
 	useEffect(() => {
 		setCallsign(loadCallsign());
@@ -617,6 +626,13 @@ export function BoardSetup() {
 									</div>
 									<p className="mt-1.5 text-xs text-[var(--ink-faint)]">Shown to your opponent. No account needed.</p>
 								</div>
+							) : null}
+
+							{mode === "join" && searchParams.get("join") ? (
+								<p className="mt-3 border border-[var(--line-strong)] bg-[var(--panel)] p-3 text-xs leading-relaxed text-[var(--ink-muted)]">
+									You were invited to room <span className="font-mono text-[var(--foreground)]">{joinCode}</span>. Deploy your
+									army, then join.
+								</p>
 							) : null}
 
 							{mode === "join" ? (
