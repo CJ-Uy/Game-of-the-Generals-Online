@@ -664,7 +664,17 @@ export function BoardSetup() {
 				</div>
 			</div>
 
-			<Sheet open={showReference} onClose={() => setShowReference(false)} title="What beats what" size="lg">
+			<Sheet
+				open={showReference}
+				onClose={() => setShowReference(false)}
+				title="What beats what"
+				size="lg"
+				footer={
+					<Button variant="outline" className="w-full" asChild>
+						<Link href="/how-to-play">Read the full rules</Link>
+					</Button>
+				}
+			>
 				<RankReference />
 			</Sheet>
 

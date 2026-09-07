@@ -311,7 +311,10 @@ export function HomeExperience() {
 							<Link href="/play">Deploy as guest</Link>
 						</Button>
 						<Button variant="outline" size="lg" onClick={() => setModal("tutorial")}>
-							Tutorial
+							Quick tutorial
+						</Button>
+						<Button variant="ghost" size="lg" asChild>
+							<Link href="/how-to-play">Full rules</Link>
 						</Button>
 					</div>
 				</div>
