@@ -14,6 +14,7 @@ import { IconClear, IconHelp, IconShuffle } from "@/components/ui/icons";
 import { COLS, GUEST_LOADOUT_KEY, ranks, type RankKey } from "@/lib/game";
 import { formationLoadout, formations } from "@/lib/formations";
 import { rankShort } from "@/lib/coach";
+import { MAX_CALLSIGN, cleanCallsign, loadCallsign, randomCallsign, saveCallsign } from "@/lib/identity";
 import { BOT_MATCH_KEY, LOCAL_MATCH_KEY } from "@/components/play/local-game-room";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +78,7 @@ export function BoardSetup() {
 	const [showReference, setShowReference] = useState(false);
 	const [pickerZone, setPickerZone] = useState<number | null>(null);
 	const [draggingUid, setDraggingUid] = useState<string | null>(null);
+	const [callsign, setCallsign] = useState("");
 
 	const loadedLoadout = useRef(false);
 	const touchDrag = useRef<{ uid: string; pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
@@ -227,7 +229,7 @@ export function BoardSetup() {
 			const response = await fetch(path, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ loadout: placement }),
+				body: JSON.stringify({ loadout: placement, name: callsign }),
 			});
 			const payload = (await response.json()) as { token?: string; room?: { code: string }; error?: string };
 			if (!response.ok || !payload.token || !payload.room) throw new Error(payload.error ?? "Could not start the room.");
@@ -270,6 +272,10 @@ export function BoardSetup() {
 		sessionStorage.setItem(LOCAL_MATCH_KEY, JSON.stringify({ gold: JSON.parse(gold), slate: placement }));
 		router.push("/play/local");
 	};
+
+	useEffect(() => {
+		setCallsign(loadCallsign());
+	}, []);
 
 	useEffect(() => {
 		try {
@@ -543,6 +549,37 @@ export function BoardSetup() {
 							</div>
 
 							<p className="mt-2.5 text-xs leading-relaxed text-[var(--ink-muted)]">{modes.find((item) => item.value === mode)?.blurb}</p>
+
+							{mode === "room" || mode === "join" ? (
+								<div className="mt-3">
+									<label htmlFor="callsign" className="block font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ink-muted)]">
+										Your callsign
+									</label>
+									<div className="mt-1.5 flex gap-1.5">
+										<input
+											id="callsign"
+											value={callsign}
+											maxLength={MAX_CALLSIGN}
+											autoComplete="off"
+											spellCheck={false}
+											onChange={(event) => setCallsign(cleanCallsign(event.target.value))}
+											onBlur={() => setCallsign(saveCallsign(callsign))}
+											className="min-w-0 flex-1 border border-[var(--line-strong)] bg-[var(--panel)] px-3 py-2 text-sm outline-none placeholder:text-[var(--ink-faint)] focus:border-[var(--accent)]"
+											placeholder="Iron Colonel"
+										/>
+										<Button
+											variant="outline"
+											size="sm"
+											aria-label="Suggest another callsign"
+											onClick={() => setCallsign(saveCallsign(randomCallsign()))}
+											className="flex-none"
+										>
+											<IconShuffle size={15} />
+										</Button>
+									</div>
+									<p className="mt-1.5 text-xs text-[var(--ink-faint)]">Shown to your opponent. No account needed.</p>
+								</div>
+							) : null}
 
 							{mode === "join" ? (
 								<div className="mt-3">

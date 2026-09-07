@@ -1,3 +1,5 @@
+import { cleanCallsign } from "@/lib/identity";
+
 export const COLS = 9;
 export const ROWS = 8;
 export const FILES = "abcdefghi";
@@ -44,6 +46,8 @@ export type RoomMessage = {
 
 export type RoomState = {
 	hostSide?: PlayerSide;
+	/** Guest callsigns. No accounts — these ride along with the room payload. */
+	names?: Partial<Record<PlayerSide, string>>;
 	pieces: GamePiece[];
 	turn: PlayerSide;
 	plies: string[];
@@ -161,11 +165,13 @@ export function makeSidePieces(side: PlayerSide, input: unknown, offset = side =
 	}));
 }
 
-export function makeWaitingState(hostLoadout: unknown, hostSide: PlayerSide = "gold"): RoomState | null {
+export function makeWaitingState(hostLoadout: unknown, hostSide: PlayerSide = "gold", hostName?: string): RoomState | null {
 	const pieces = makeSidePieces(hostSide, hostLoadout);
 	if (!pieces) return null;
+	const name = cleanCallsign(hostName);
 	return {
 		hostSide,
+		names: name ? { [hostSide]: name } : {},
 		pieces,
 		turn: "gold",
 		plies: [],
@@ -175,12 +181,21 @@ export function makeWaitingState(hostLoadout: unknown, hostSide: PlayerSide = "g
 	};
 }
 
-export function addGuest(state: RoomState, guestLoadout: unknown): RoomState | null {
+export function addGuest(state: RoomState, guestLoadout: unknown, guestName?: string): RoomState | null {
 	const guestSide = oppositeSide(state.hostSide ?? "gold");
 	if (state.pieces.some((piece) => piece.owner === guestSide)) return null;
 	const pieces = makeSidePieces(guestSide, guestLoadout);
 	if (!pieces) return null;
-	return addMessage({ ...state, pieces: [...state.pieces, ...pieces] }, "sys", "Both armies are deployed. Gold moves first.");
+	const name = cleanCallsign(guestName);
+	return addMessage(
+		{
+			...state,
+			pieces: [...state.pieces, ...pieces],
+			names: { ...state.names, ...(name ? { [guestSide]: name } : {}) },
+		},
+		"sys",
+		"Both armies are deployed. Gold moves first.",
+	);
 }
 
 export function addMessage(state: RoomState, who: RoomMessage["who"], text: string): RoomState {

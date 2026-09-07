@@ -29,6 +29,10 @@ pnpm lint         # eslint (next lint)
 pnpm preview      # opennext build + local cloudflare preview
 pnpm deploy       # opennext build + deploy to cloudflare
 pnpm cf-typegen   # regenerate cloudflare-env.d.ts from wrangler
+
+# First run only: the local D1 starts empty, so every online-room request
+# fails with "no such table: game_rooms" until the migration is applied.
+npx wrangler d1 execute gogo-db --local --file drizzle/0000_bouncy_matthew_murdock.sql
 ```
 
 ## Layout

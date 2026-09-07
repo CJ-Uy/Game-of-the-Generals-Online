@@ -491,6 +491,9 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const foeFallen = boardPieces.filter((piece) => piece.side === "foe" && !piece.alive);
 	const revealFoe = !!room?.state.outcome || replayActive;
 	const outcome = room?.state.outcome ?? null;
+	const names = room?.state.names ?? {};
+	const foeName = (room ? names[oppositeSide(room.side)] : "") || "Opponent";
+	const myName = (room ? names[room.side] : "") || "You";
 
 	const lastClash = useMemo(
 		() => (replayActive || !room ? undefined : readLastClash(room.state.plies, room.side, byCell)),
@@ -564,7 +567,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 				</aside>
 				<div className="mx-auto w-full max-w-[760px] min-w-0">
 					<PlayerRail
-						name="Opponent"
+						name={foeName}
 						side={oppositeSide(room?.side ?? "gold")}
 						active={room?.status === "active" && !outcome && !myTurn}
 						waiting={room?.status === "waiting"}
@@ -743,7 +746,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 
 					<PlayerRail
 						className="mt-2"
-						name="You"
+						name={myName}
 						side={room?.side ?? "gold"}
 						you
 						active={!!myTurn}

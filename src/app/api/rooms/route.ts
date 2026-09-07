@@ -3,9 +3,9 @@ import { makeCode, makeToken, getRoomBindings, json, publicRoom } from "@/lib/ro
 import { makeWaitingState, type PlayerSide } from "@/lib/game";
 
 export async function POST(request: Request) {
-	const body = (await request.json().catch(() => null)) as { loadout?: unknown } | null;
+	const body = (await request.json().catch(() => null)) as { loadout?: unknown; name?: unknown } | null;
 	const hostSide: PlayerSide = crypto.getRandomValues(new Uint8Array(1))[0] % 2 === 0 ? "gold" : "slate";
-	const state = makeWaitingState(body?.loadout, hostSide);
+	const state = makeWaitingState(body?.loadout, hostSide, typeof body?.name === "string" ? body.name : undefined);
 	if (!state) return json({ error: "Deploy all 21 pieces before creating a room." }, 400);
 
 	const { db } = await getRoomBindings();
