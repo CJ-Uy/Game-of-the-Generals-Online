@@ -1,4 +1,4 @@
-import { addMessage, applyMove, resign } from "@/lib/game";
+import { addMessage, applyMove, requestRematch, resign } from "@/lib/game";
 import { findRoom, json, parseState, publicRoom, saveRoom, sideFor } from "@/lib/rooms";
 
 export async function GET(request: Request, { params }: { params: Promise<{ code: string }> }) {
@@ -16,6 +16,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
 		| { token?: string; action?: "move"; pieceId?: number; col?: number; row?: number; version?: number }
 		| { token?: string; action?: "chat"; text?: string }
 		| { token?: string; action?: "resign" }
+		| { token?: string; action?: "rematch" }
 		| null;
 	const { code } = await params;
 	const room = await findRoom(code);
@@ -30,6 +31,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
 
 	try {
 		const state = parseState(room);
+
+		// A rematch is the one action that can move a finished room back to active.
+		if (body?.action === "rematch") {
+			const { state: next, started } = requestRematch(state, side);
+			const updated = await saveRoom(room, next, started ? "active" : room.status);
+			if (updated) return json(publicRoom(updated, token));
+			const latest = await findRoom(code);
+			return json({ error: "Room changed. Synced latest room.", room: latest ? publicRoom(latest, token) : null }, 409);
+		}
+
 		const next =
 			body?.action === "move"
 				? applyMove(state, side, Number(body.pieceId), Number(body.col), Number(body.row))

@@ -22,6 +22,8 @@ export function MatchResult({
 	onReplay,
 	onRematch,
 	rematchLabel = "Play again",
+	rematchDisabled,
+	rematchNote,
 	className,
 }: {
 	outcome: Outcome;
@@ -30,6 +32,9 @@ export function MatchResult({
 	onReplay?: () => void;
 	onRematch?: () => void;
 	rematchLabel?: string;
+	rematchDisabled?: boolean;
+	/** One line under the actions explaining what a rematch will do. */
+	rematchNote?: string;
 	className?: string;
 }) {
 	const won = outcome.winner === side;
@@ -81,7 +86,11 @@ export function MatchResult({
 			</section>
 
 			<div className="flex flex-wrap gap-2">
-				{onRematch ? <Button onClick={onRematch}>{rematchLabel}</Button> : null}
+				{onRematch ? (
+					<Button onClick={onRematch} disabled={rematchDisabled}>
+						{rematchLabel}
+					</Button>
+				) : null}
 				<Button variant="outline" asChild>
 					<Link href="/play">New match</Link>
 				</Button>
@@ -91,6 +100,8 @@ export function MatchResult({
 					</Button>
 				) : null}
 			</div>
+
+			{rematchNote ? <p className="text-xs text-[var(--ink-muted)]">{rematchNote}</p> : null}
 		</div>
 	);
 }

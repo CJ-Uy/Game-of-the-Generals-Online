@@ -559,6 +559,20 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 		if (outcome) setResultOpen(true);
 	}, [outcome]);
 
+	// A rematch resets the board in place, so clear anything tied to the old match.
+	const rematchPending = room?.state.rematchBy ?? null;
+	const theyWantRematch = !!rematchPending && rematchPending !== room?.side;
+	const youWantRematch = !!rematchPending && rematchPending === room?.side;
+
+	useEffect(() => {
+		if (room?.status === "active" && !outcome) {
+			setResultOpen(false);
+			setReplayStep(null);
+			setSelected(null);
+			setTags({});
+		}
+	}, [room?.status, outcome]);
+
 	const copyCode = () => {
 		void navigator.clipboard
 			?.writeText(code)
@@ -1039,6 +1053,16 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 						outcome={outcome}
 						side={room.side}
 						pieces={pieces}
+						onRematch={() => void act({ action: "rematch" })}
+						rematchLabel={theyWantRematch ? "Accept rematch" : youWantRematch ? "Waiting for them…" : "Offer a rematch"}
+						rematchDisabled={youWantRematch}
+						rematchNote={
+							theyWantRematch
+								? `${foeName} wants to play again. Sides will swap.`
+								: youWantRematch
+									? "Offer sent. The match restarts when they accept."
+									: "Same room, same armies, swapped sides."
+						}
 						onReplay={() => {
 							setResultOpen(false);
 							animateBoard(() => setReplayStep(0));

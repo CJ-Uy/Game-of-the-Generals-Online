@@ -48,6 +48,13 @@ export type RoomState = {
 	hostSide?: PlayerSide;
 	/** Guest callsigns. No accounts — these ride along with the room payload. */
 	names?: Partial<Record<PlayerSide, string>>;
+	/**
+	 * Starting armies, kept by role rather than by side so a rematch can rebuild
+	 * the board after the colours swap. Roles are stable; sides are not.
+	 */
+	loadouts?: { host?: unknown; guest?: unknown };
+	/** Side that has asked for a rematch; the other side accepting starts it. */
+	rematchBy?: PlayerSide | null;
 	pieces: GamePiece[];
 	turn: PlayerSide;
 	plies: string[];
@@ -66,7 +73,8 @@ export type PublicRoom = {
 	status: RoomStatus;
 	side: PlayerSide;
 	version: number;
-	state: Omit<RoomState, "pieces"> & { pieces: PublicPiece[] };
+	/** `loadouts` is deliberately absent: it holds both starting armies in full. */
+	state: Omit<RoomState, "pieces" | "loadouts"> & { pieces: PublicPiece[] };
 };
 
 export type LegalMove = {
@@ -78,6 +86,7 @@ export type LegalMove = {
 
 const rankSet = new Set(ranks.map((rank) => rank.key));
 const army = ranks.flatMap((rank) => Array.from({ length: rank.count }, () => rank.key));
+const ARMY_SIZE = army.length;
 const rankNumbers: Partial<Record<RankKey, number>> = {
 	G5: 15,
 	G4: 14,
@@ -172,6 +181,8 @@ export function makeWaitingState(hostLoadout: unknown, hostSide: PlayerSide = "g
 	return {
 		hostSide,
 		names: name ? { [hostSide]: name } : {},
+		loadouts: { host: hostLoadout },
+		rematchBy: null,
 		pieces,
 		turn: "gold",
 		plies: [],
@@ -192,6 +203,7 @@ export function addGuest(state: RoomState, guestLoadout: unknown, guestName?: st
 			...state,
 			pieces: [...state.pieces, ...pieces],
 			names: { ...state.names, ...(name ? { [guestSide]: name } : {}) },
+			loadouts: { ...state.loadouts, guest: guestLoadout },
 		},
 		"sys",
 		"Both armies are deployed. Gold moves first.",
@@ -289,26 +301,77 @@ export function chooseBotMove(state: RoomState, side: PlayerSide, difficulty: st
 	return difficulty === "Sergeant" ? sample(scored.slice(0, Math.min(6, scored.length))).move : scored[0].move;
 }
 
+export type RematchResult = { state: RoomState; started: boolean };
+
+export function requestRematch(state: RoomState, side: PlayerSide): RematchResult {
+	if (!state.outcome) throw new Error("The match is still running.");
+
+	// First request is an offer; the opponent's request accepts it.
+	if (!state.rematchBy || state.rematchBy === side) {
+		if (state.rematchBy === side) return { state, started: false };
+		return {
+			state: addMessage({ ...state, rematchBy: side }, "sys", `${label(side)} wants a rematch.`),
+			started: false,
+		};
+	}
+
+	const hostSide = state.hostSide ?? "gold";
+	const nextHostSide = oppositeSide(hostSide);
+	const hostPieces = makeSidePieces(nextHostSide, state.loadouts?.host, 0);
+	const guestPieces = makeSidePieces(oppositeSide(nextHostSide), state.loadouts?.guest, ARMY_SIZE);
+	if (!hostPieces || !guestPieces) throw new Error("The original armies are no longer available.");
+
+	// Names are keyed by side, so they have to move with their owners.
+	const hostName = state.names?.[hostSide];
+	const guestName = state.names?.[oppositeSide(hostSide)];
+
+	return {
+		state: {
+			hostSide: nextHostSide,
+			names: {
+				...(hostName ? { [nextHostSide]: hostName } : {}),
+				...(guestName ? { [oppositeSide(nextHostSide)]: guestName } : {}),
+			},
+			loadouts: state.loadouts,
+			rematchBy: null,
+			pieces: [...hostPieces, ...guestPieces],
+			turn: "gold",
+			plies: [],
+			messages: [{ id: 1, who: "sys", text: "Rematch. Sides are swapped and Gold moves first.", at: Date.now() }],
+			nextMessageId: 2,
+			outcome: null,
+		},
+		started: true,
+	};
+}
+
 export function resign(state: RoomState, side: PlayerSide): RoomState {
 	const winner = side === "gold" ? "slate" : "gold";
 	return addMessage({ ...state, outcome: { winner, note: `${label(side)} surrendered.` } }, "sys", `${label(side)} surrendered.`);
 }
 
 export function toPublicRoom(code: string, status: RoomStatus, version: number, side: PlayerSide, state: RoomState): PublicRoom {
-	return {
-		code,
-		status,
-		side,
-		version,
-		state: {
-			...state,
-			pieces: state.pieces.map(({ rank, owner, ...piece }) => ({
-				...piece,
-				side: owner === side ? "you" : "foe",
-				rank: owner === side || state.outcome ? rank : undefined,
-			})),
-		},
-	};
+	// Strip the starting armies before this leaves the server. They hold the
+	// opponent's full deployment, which is the one thing a client must never
+	// receive while the match is running.
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	const { loadouts, ...shared } = state;
+
+	const pieces: PublicPiece[] = state.pieces.map(({ rank, owner, ...piece }) => ({
+		...piece,
+		side: owner === side ? "you" : "foe",
+		rank: owner === side || state.outcome ? rank : undefined,
+	}));
+
+	// The whole game rests on this: while a match is live, no enemy rank may
+	// leave the server. Guarding the built payload rather than the condition
+	// above means a future edit to that condition still trips this.
+	if (process.env.NODE_ENV !== "production" && !state.outcome) {
+		const leaked = pieces.filter((piece) => piece.side === "foe" && piece.rank !== undefined);
+		if (leaked.length) throw new Error(`toPublicRoom leaked ${leaked.length} enemy rank(s) during a live match.`);
+	}
+
+	return { code, status, side, version, state: { ...shared, pieces } };
 }
 
 function getOutcome(pieces: GamePiece[]): Outcome | null {
