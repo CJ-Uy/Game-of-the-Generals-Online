@@ -70,7 +70,7 @@ in new code; older screens still carry hardcoded values.
 |---|---|---|
 | `--background` | `#0e1420` | page bg |
 | `--foreground` | `#ede8da` | primary text |
-| `--accent` | `#c9a85d` (hi `#dabb74`, lo `#a8894a`) | gold — armies + arbiter only |
+| `--accent` | `#c9a85d` (hi `#dabb74`, lo `#a8894a`) | gold — armies, arbiter, primary action |
 | `--panel` / `--panel-raised` | `#0b101b` / `#121b2c` | insets, panels |
 | `--line` / `--line-strong` | `#1c2740` / `#2c3a55` | hairlines |
 | `--ink-muted` / `--ink-faint` | `#8a93a8` / `#5b647a` | labels, captions |
@@ -79,10 +79,14 @@ in new code; older screens still carry hardcoded values.
 | `--loss` | `#a8503c` | defeat, destructive |
 | `--warn` | `#c9873d` | caution, reconnecting |
 
-**The one colour rule: gold belongs to the armies and the arbiter.** Buttons,
-labels, borders and structure use the ink and slate scales, so the board stays
-the only saturated thing on screen and an arbiter verdict reads as an event.
-Don't add gold-filled CTAs or gold section accents.
+**The one colour rule: gold belongs to the armies, the arbiter, and the single
+primary action on a screen.** Everything else — labels, borders, structure,
+section accents — uses the ink and slate scales, so the board stays the most
+saturated thing on screen and an arbiter verdict reads as an event.
+
+Concretely, gold is *never* used for: an eyebrow above a heading, a caption,
+a decorative numeral, a coloured rail on a card, or a second competing CTA.
+`Button` default is the gold action; use `outline` or `ghost` for the rest.
 
 Two hard constraints:
 
