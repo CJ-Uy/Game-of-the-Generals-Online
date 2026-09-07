@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { WarBoard } from "@/components/home/war-board";
 import { ranks as rankTable, type RankKey } from "@/lib/game";
 import { Piece } from "@/components/game/piece";
@@ -17,10 +16,11 @@ const playModes = [
 	["Private room", "Get a four-letter code and send it to whoever you want to beat.", "online"],
 ];
 
+// Cosmetics only, and nothing that touches rating, clock or information.
 const shopItems = [
-	["Brass Command Set", "Classic gold pieces with officer-table trim.", "250"],
-	["Jade Field Set", "Deep green board and subdued rank markers.", "320"],
-	["Crimson Campaign", "Red command accents for aggressive play.", "410"],
+	["Brass Command Set", "Classic gold pieces with officer-table trim.", "Common"],
+	["Jade Field Set", "Deep green board and subdued rank markers.", "Rare"],
+	["Crimson Campaign", "Red command accents for aggressive play.", "Legendary"],
 ];
 
 function Modal({
@@ -96,9 +96,9 @@ export function TutorialModal({ onClose }: { onClose: () => void }) {
 
 	return (
 		<Modal title="Field Manual" onClose={onClose}>
-			<div className="mb-5 font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--accent)]">
-				Field manual · {String(step + 1).padStart(2, "0")} / 05
-			</div>
+			<p className="mb-5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-muted)]">
+				Step <span className="tabular-nums text-[var(--foreground)]">{step + 1}</span> of {steps.length}
+			</p>
 			<div className="rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-5">{current.visual}</div>
 			<h3 className="mt-5 font-display text-3xl font-bold uppercase text-[#ede8da]">{current.title}</h3>
 			<p className="mt-3 text-sm leading-7 text-[#aeb5c4]">{current.body}</p>
@@ -232,21 +232,29 @@ function FlagDiagram() {
 
 function ShopModal({ onClose }: { onClose: () => void }) {
 	return (
-		<Modal title="Shop" onClose={onClose}>
-			<div className="grid gap-3 md:grid-cols-3">
-				{shopItems.map(([name, body, price]) => (
-					<Card key={name} className="overflow-hidden">
-						<div className="aspect-[4/3] border-b border-[#1c2740] bg-[radial-gradient(circle_at_30%_20%,rgba(201,168,93,0.26),transparent_34%),linear-gradient(135deg,#1a2338,#0b101b)]" />
-						<div className="p-5">
-							<CardTitle>{name}</CardTitle>
-							<CardContent className="mt-3 p-0">{body}</CardContent>
-							<Button className="mt-5 w-full" variant="outline">
-								{price} coins
-							</Button>
+		<Modal title="Board sets" onClose={onClose}>
+			<p className="max-w-prose text-[15px] leading-7 text-[var(--ink-muted)]">
+				Nothing is for sale yet — these are the board and piece sets being worked on. When they do arrive they will
+				only ever change how the game looks. No set will touch a rating, a clock, or what you can see of your
+				opponent&apos;s army.
+			</p>
+
+			<ul className="mt-6 grid gap-3 md:grid-cols-3">
+				{shopItems.map(([name, body, rarity]) => (
+					<li key={name} className="overflow-hidden border border-[var(--line)] bg-[var(--panel)]">
+						<div className="aspect-[4/3] border-b border-[var(--line)] bg-[radial-gradient(circle_at_30%_20%,rgba(201,168,93,0.26),transparent_34%),linear-gradient(135deg,#1a2338,#0b101b)]" />
+						<div className="p-4">
+							<h3 className="font-display text-xl font-semibold uppercase leading-tight">{name}</h3>
+							<p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">{body}</p>
+							<p className="mt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ink-faint)]">{rarity} · in progress</p>
 						</div>
-					</Card>
+					</li>
 				))}
-			</div>
+			</ul>
+
+			<p className="mt-6 border-t border-[var(--line)] pt-4 text-sm text-[var(--ink-muted)]">
+				Every mode is free and needs no account. That is not changing.
+			</p>
 		</Modal>
 	);
 }
