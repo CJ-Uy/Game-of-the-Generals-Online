@@ -32,7 +32,7 @@ import { MatchResult } from "@/components/game/match-result";
 import { MatchMenu } from "@/components/game/match-menu";
 import { CoachLine, useCoachLevel } from "@/components/game/coach";
 import { RankReference } from "@/components/game/rank-reference";
-import { IconCopy, IconHelp, IconMenu } from "@/components/ui/icons";
+import { IconCopy, IconHelp, IconMenu, IconSpinner } from "@/components/ui/icons";
 import { COLS, FILES, ROWS, battleLosers, oppositeSide, square, type PlayerSide, type PublicPiece, type PublicRoom, type RoomMessage } from "@/lib/game";
 
 /**
@@ -57,6 +57,34 @@ function readLastClash(plies: string[], side: PlayerSide, byCell: Map<number, Pu
 
 	const yoursSurvived = survivor.side === "you";
 	return { byYou, yourRank: yoursSurvived ? survivor.rank : undefined, youLost: !yoursSurvived, theyLost: yoursSurvived };
+}
+
+function RoomNotice({
+	code,
+	title,
+	body,
+	action,
+}: {
+	code: string;
+	title: string;
+	body: string;
+	action: { href: string; label: string };
+}) {
+	return (
+		<main className="flex min-h-[100dvh] flex-col bg-[var(--background)] text-[var(--foreground)]">
+			<AppHeader />
+			<div className="flex flex-1 items-center px-5 py-16">
+				<div className="mx-auto w-full max-w-md">
+					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ink-faint)]">Room {code}</p>
+					<h1 className="mt-2 font-display text-[clamp(32px,7vw,52px)] font-bold uppercase leading-[0.95]">{title}</h1>
+					<p className="mt-3 text-[15px] leading-7 text-[var(--ink-muted)]">{body}</p>
+					<Button asChild className="mt-6">
+						<Link href={action.href}>{action.label}</Link>
+					</Button>
+				</div>
+			</div>
+		</main>
+	);
 }
 
 function animateBoard(update: () => void) {
@@ -518,14 +546,37 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 
 	if (!token) {
 		return (
-			<main className="flex min-h-[100dvh] items-center justify-center bg-[var(--background)] p-4 text-center text-[var(--foreground)]">
-				<Card className="max-w-sm p-6">
-					<CardTitle>Room token missing</CardTitle>
-					<p className="mt-3 text-sm leading-6 text-[#8a93a8]">Create or join the lobby from this browser before opening the room.</p>
-					<Button asChild className="mt-5">
-						<Link href="/play">Back to play</Link>
-					</Button>
-				</Card>
+			<RoomNotice
+				code={code}
+				title="This browser is not in that room"
+				body="A room is tied to the browser that created or joined it, so there is nothing to restore here. If a friend sent you the code, join it from the play screen."
+				action={{ href: "/play", label: "Go to the play screen" }}
+			/>
+		);
+	}
+
+	// A room that cannot be loaded at all is a state, not an inline error over
+	// an empty board. Once a room IS loaded, failures stay inline and the last
+	// known position keeps rendering — never blank a live match.
+	if (error && !room) {
+		return (
+			<RoomNotice
+				code={code}
+				title="That room is gone"
+				body={`${error} Rooms disappear once both players leave, so the code may simply have expired.`}
+				action={{ href: "/play", label: "Start a new match" }}
+			/>
+		);
+	}
+
+	if (!room) {
+		return (
+			<main className="flex min-h-[100dvh] flex-col bg-[var(--background)] text-[var(--foreground)]">
+				<AppHeader />
+				<div className="flex flex-1 items-center justify-center gap-3 p-6 text-[var(--ink-muted)]">
+					<IconSpinner size={18} />
+					<p className="font-mono text-[11px] uppercase tracking-[0.16em]">Opening room {code}</p>
+				</div>
 			</main>
 		);
 	}
@@ -598,6 +649,13 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 							yourSide: room?.side,
 						}}
 					/>
+
+					{syncState === "reconnecting" ? (
+						<div className="mt-3 flex items-center gap-2.5 border border-[var(--warn)]/45 bg-[var(--warn)]/10 px-3 py-2">
+							<IconSpinner size={15} className="flex-none text-[var(--warn)]" />
+							<p className="text-sm text-[#e5c08a]">Lost the live connection. Still showing the last known position and retrying.</p>
+						</div>
+					) : null}
 
 					{error ? (
 						<div role="alert" className="mt-3 border border-[var(--loss)]/50 bg-[var(--loss)]/10 px-3 py-2 text-sm text-[#e0a08c]">

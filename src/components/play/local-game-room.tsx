@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -93,17 +93,36 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 	const [resultOpen, setResultOpen] = useState(false);
 	const { level: coachLevel, setLevel: setCoachLevel } = useCoachLevel();
 
-	useEffect(() => {
+	const startFresh = useCallback(() => {
 		try {
 			const raw = sessionStorage.getItem(mode === "local" ? LOCAL_MATCH_KEY : BOT_MATCH_KEY);
-			if (!raw) return;
+			if (!raw) return false;
 			const saved = JSON.parse(raw) as { gold?: unknown; slate?: unknown; difficulty?: string };
 			setBotLevel(saved.difficulty ?? "Sergeant");
+			// A rematch redeals the bot's army, so the same opening cannot be replayed.
 			setState(makeState(saved.gold, mode === "bot" ? makeRandomLoadout() : saved.slate));
+			return true;
 		} catch {
 			setState(null);
+			return false;
 		}
 	}, [mode]);
+
+	useEffect(() => {
+		startFresh();
+	}, [startFresh]);
+
+	const rematch = () => {
+		if (!startFresh()) return;
+		setVersion((current) => current + 1);
+		setViewSide("gold");
+		setHandoff(null);
+		setSelected(null);
+		setTags({});
+		setTagTarget(null);
+		setResultOpen(false);
+		setError("");
+	};
 
 	useEffect(() => () => {
 		if (arbiterTimer.current) window.clearTimeout(arbiterTimer.current);
@@ -603,7 +622,15 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 			/>
 
 			<Sheet open={resultOpen && !!outcome} onClose={() => setResultOpen(false)} title="Match over" size="md">
-				{outcome ? <MatchResult outcome={outcome} side={viewSide} pieces={pieces} /> : null}
+				{outcome ? (
+					<MatchResult
+						outcome={outcome}
+						side={viewSide}
+						pieces={pieces}
+						onRematch={rematch}
+						rematchLabel={mode === "bot" ? "Play the bot again" : "Play again"}
+					/>
+				) : null}
 			</Sheet>
 		</main>
 	);
