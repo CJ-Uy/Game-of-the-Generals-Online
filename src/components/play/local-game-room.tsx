@@ -28,6 +28,7 @@ import { PlayerRail } from "@/components/game/player-rail";
 import { MatchResult } from "@/components/game/match-result";
 import { MatchMenu } from "@/components/game/match-menu";
 import { CoachLine, useCoachLevel } from "@/components/game/coach";
+import { useBoardKeys } from "@/components/game/use-board-keys";
 import { RankReference } from "@/components/game/rank-reference";
 import { IconHelp, IconMenu } from "@/components/ui/icons";
 import { oppositeSide } from "@/lib/game";
@@ -149,6 +150,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 	const myTurn = !!room && !handoff && !botThinking && !room.state.outcome && room.state.turn === viewSide && (mode === "local" || viewSide === "gold");
 	const sel = selected == null ? null : pieces.find((piece) => piece.id === selected && piece.alive);
 	const lastMove = parseLastMove(room?.state.plies ?? []);
+	const onBoardKeys = useBoardKeys(COLS, ROWS);
 	const targets = new Set<number>();
 	if (sel && myTurn) {
 		for (const [dc, dr] of [
@@ -374,7 +376,7 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 							<span>{viewSide === "slate" ? "Gold line" : "Slate line"}</span>
 							<span>drag or tap to move</span>
 						</div>
-						<div className="grid grid-cols-[1.25rem_repeat(9,minmax(0,1fr))] gap-1">
+						<div onKeyDown={onBoardKeys} className="grid grid-cols-[1.25rem_repeat(9,minmax(0,1fr))] gap-1">
 							{Array.from({ length: ROWS }).map((_, viewRow) => (
 								<Fragment key={viewRow}>
 									<div className="flex items-center justify-center font-mono text-[9px] text-[#5b647a]">{viewSquare(viewSide, 0, viewRow).slice(1)}</div>
@@ -394,6 +396,9 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 										key={index}
 										type="button"
 										data-game-cell
+											data-view-col={viewCol}
+											data-view-row={viewRow}
+											tabIndex={viewCol === 0 && viewRow === 0 ? 0 : -1}
 											data-col={col}
 											data-row={row}
 										draggable={piece?.side === "you" && myTurn}
@@ -570,13 +575,36 @@ export function LocalGameRoom({ mode }: { mode: "local" | "bot" }) {
 				</div>
 			) : null}
 
+			{/* Pass-and-play privacy: the screen must be fully covered and the
+			    handover said out loud, or the next player sees the last one's army. */}
 			{handoff ? (
-				<div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#05070c]/90 p-4 backdrop-blur-sm">
-					<div className="w-full max-w-sm rounded-[10px] border border-[#2c3a55] bg-[#0e1420] p-7 text-center">
-						<div className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--accent)]">Pass device</div>
-						<div className="mt-2 font-display text-4xl font-extrabold uppercase">{handoff === "gold" ? "Gold" : "Slate"}</div>
-						<Button className="mt-6 w-full" onClick={() => { setViewSide(handoff); setHandoff(null); }}>
-							Start turn
+				<div
+					role="dialog"
+					aria-modal="true"
+					aria-label="Pass the device"
+					className="fixed inset-0 z-[90] flex items-center justify-center bg-[#05070c]/96 p-5 backdrop-blur-md"
+				>
+					<div className="w-full max-w-sm">
+						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ink-faint)]">
+							{handoff === "gold" ? "Player 2" : "Player 1"} has finished
+						</p>
+						<h2 className="mt-2 font-display text-[clamp(34px,9vw,52px)] font-bold uppercase leading-[0.92]">
+							Pass the device to Player {handoff === "gold" ? "1" : "2"}
+						</h2>
+						<p className="mt-3 text-[15px] leading-7 text-[var(--ink-muted)]">
+							Hand the screen over before tapping. The board behind this is the other player&apos;s army — looking
+							now is the whole game.
+						</p>
+						<Button
+							className="mt-6 w-full"
+							autoFocus
+							onClick={() => {
+								setViewSide(handoff);
+								setHandoff(null);
+								setSelected(null);
+							}}
+						>
+							I am Player {handoff === "gold" ? "1" : "2"} — start my turn
 						</Button>
 					</div>
 				</div>

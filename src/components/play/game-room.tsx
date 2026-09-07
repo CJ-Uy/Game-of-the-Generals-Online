@@ -31,6 +31,7 @@ import { PlayerRail } from "@/components/game/player-rail";
 import { MatchResult } from "@/components/game/match-result";
 import { MatchMenu } from "@/components/game/match-menu";
 import { CoachLine, useCoachLevel } from "@/components/game/coach";
+import { useBoardKeys } from "@/components/game/use-board-keys";
 import { RankReference } from "@/components/game/rank-reference";
 import { IconCopy, IconHelp, IconMenu, IconSpinner } from "@/components/ui/icons";
 import { COLS, FILES, ROWS, battleLosers, oppositeSide, square, type PlayerSide, type PublicPiece, type PublicRoom, type RoomMessage } from "@/lib/game";
@@ -421,6 +422,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	const activePlies = replayActive ? (room?.state.plies.slice(0, replayStep ?? 0) ?? []) : (room?.state.plies ?? []);
 	const lastMove = parseLastMove(activePlies);
 	const pendingPiece = pendingMove == null ? null : boardPieces.find((piece) => piece.id === pendingMove.pieceId);
+	const onBoardKeys = useBoardKeys(COLS, ROWS);
 	const targets = new Set<number>();
 	if (sel && myTurn) {
 		for (const [dc, dr] of [
@@ -700,7 +702,7 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 							<span>{room?.side === "slate" ? "Gold line" : "Slate line"}</span>
 							<span>tap an enemy piece to tag it</span>
 						</div>
-						<div className="relative grid grid-cols-[1.25rem_repeat(9,minmax(0,1fr))] gap-1">
+						<div onKeyDown={onBoardKeys} className="relative grid grid-cols-[1.25rem_repeat(9,minmax(0,1fr))] gap-1">
 							{room?.status === "waiting" ? (
 								<div className="pointer-events-none absolute left-6 right-0 top-[10%] z-20 flex justify-center px-2">
 									<div className="pointer-events-auto max-w-[19rem] border border-[var(--line-strong)] bg-[var(--background)]/96 p-4 text-center shadow-[var(--e3)]">
@@ -741,6 +743,9 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 										key={index}
 										type="button"
 										data-game-cell
+											data-view-col={viewCol}
+											data-view-row={viewRow}
+											tabIndex={viewCol === 0 && viewRow === 0 ? 0 : -1}
 											data-col={col}
 											data-row={row}
 										draggable={piece?.side === "you" && myTurn && !busy}
