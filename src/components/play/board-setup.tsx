@@ -281,7 +281,11 @@ export function BoardSetup() {
 		if (invited.length === 4) {
 			setMode("join");
 			setJoinCode(invited);
+			return;
 		}
+		// Landing and footer links preselect a mode with ?mode=bot|local|room|join.
+		const linked = modes.find((item) => item.value === searchParams.get("mode"));
+		if (linked) setMode(linked.value);
 	}, [searchParams]);
 
 	useEffect(() => {
