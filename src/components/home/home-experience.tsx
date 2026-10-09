@@ -1,59 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Sheet } from "@/components/ui/sheet";
+import { SiteHeader } from "@/components/app-header";
+import { IconArrowRight, IconArrowUp } from "@/components/ui/icons";
 import { WarBoard } from "@/components/home/war-board";
 import { SiteFooter } from "@/components/site-footer";
 import { ranks as rankTable, type RankKey } from "@/lib/game";
+import { formations } from "@/lib/formations";
 import { Piece } from "@/components/game/piece";
+import { cn } from "@/lib/utils";
 
 // Strongest first: on this section the order itself is the rule.
 const ladder = rankTable.map((rank) => ({ key: rank.key, name: rank.name, count: rank.count }));
 
+// The same three ways in as the footer, and each one lands on the setup screen
+// with that match type already chosen.
 const playModes = [
-	["Solo drill", "Practise against the arbiter. Four difficulty tiers, no waiting.", "vs computer"],
-	["Pass & play", "Two commanders, one device. Hand it over when prompted.", "same screen"],
-	["Private room", "Get a four-letter code and send it to whoever you want to beat.", "online"],
+	{ title: "Vs computer", body: "Practise against the computer. Five difficulty levels and a wildcard, no waiting.", tag: "Solo", href: "/play?mode=bot" },
+	{ title: "Pass & play", body: "Two commanders, one device. The screen hides each army before it is handed over.", tag: "Same screen", href: "/play?mode=local" },
+	{ title: "Private room", body: "Get a four-letter code and an invite link, and send it to whoever you want to beat.", tag: "Online", href: "/play?mode=room" },
 ];
 
 // Cosmetics only, and nothing that touches rating, clock or information.
-const shopItems = [
-	["Brass Command Set", "Classic gold pieces with officer-table trim.", "Common"],
-	["Jade Field Set", "Deep green board and subdued rank markers.", "Rare"],
-	["Crimson Campaign", "Red command accents for aggressive play.", "Legendary"],
+const shopItems: { name: string; body: string; rarity: string; board: [string, string]; piece: string }[] = [
+	{ name: "Brass Command Set", body: "Classic gold pieces with officer-table trim.", rarity: "Common", board: ["#202936", "#121923"], piece: "linear-gradient(150deg,#c9a85d,#a8894a)" },
+	{ name: "Jade Field Set", body: "Deep green board and subdued rank markers.", rarity: "Rare", board: ["#1b3a33", "#112822"], piece: "linear-gradient(150deg,#b9c4a4,#8d9a79)" },
+	{ name: "Crimson Campaign", body: "Red command accents for aggressive play.", rarity: "Legendary", board: ["#2a1f26", "#1a1318"], piece: "linear-gradient(150deg,#c4654d,#93412f)" },
 ];
-
-function Modal({
-	title,
-	children,
-	onClose,
-}: {
-	title: string;
-	children: React.ReactNode;
-	onClose: () => void;
-}) {
-	return (
-		<div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#05070c]/80 p-4 backdrop-blur-sm" onClick={onClose}>
-			<div
-				className="max-h-[88dvh] w-full max-w-3xl overflow-auto rounded-[8px] border border-[#2c3a55] bg-[#0e1420] shadow-[0_30px_100px_rgba(0,0,0,0.65)]"
-				onClick={(event) => event.stopPropagation()}
-			>
-				<div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#1c2740] bg-[#0e1420]/95 px-5 py-4">
-					<h2 className="font-display text-3xl font-extrabold uppercase tracking-normal text-[#ede8da]">{title}</h2>
-					<Button variant="ghost" size="sm" onClick={onClose}>
-						Close
-					</Button>
-				</div>
-				<div className="p-5 md:p-7">{children}</div>
-			</div>
-		</div>
-	);
-}
 
 function Inversion({ attacker, defender, text }: { attacker: RankKey; defender: RankKey; text: string }) {
 	return (
-		<p className="flex items-center gap-3 text-[15px] leading-6 text-[#ede8da]">
+		<p className="flex items-center gap-3 text-[15px] leading-6 text-[var(--foreground)]">
 			<span className="flex flex-none items-center gap-1.5">
 				<Piece rank={attacker} side="you" scale="card" />
 				<span aria-hidden className="font-mono text-xs text-[var(--live)]">&gt;</span>
@@ -64,108 +44,134 @@ function Inversion({ attacker, defender, text }: { attacker: RankKey; defender: 
 	);
 }
 
-export function TutorialModal({ onClose }: { onClose: () => void }) {
+const tutorialSteps: { title: string; body: string; visual: ReactNode }[] = [
+	{
+		title: "Deploy in secret",
+		body: "Each side fields 21 pieces across 15 ranks. Place them anywhere on your three back rows. Your opponent sees only the backs of your pieces, and you see only theirs.",
+		visual: <SetupRows />,
+	},
+	{
+		title: "One square at a time",
+		body: "Every piece moves exactly one square forward, backward, or sideways. No jumps, no charges, no diagonals. Turns strictly alternate.",
+		visual: <MoveDiagram />,
+	},
+	{
+		title: "Judged in silence",
+		body: "Move onto an occupied enemy square to challenge it. The arbiter compares hidden ranks and removes the loser. Equal ranks both fall.",
+		visual: <ArbiterDiagram />,
+	},
+	{
+		title: "The food chain has traps",
+		body: "Higher rank wins most battles. The Spy kills every officer, but the Private is the only piece that can kill a Spy.",
+		visual: <RankTrapDiagram />,
+	},
+	{
+		title: "It all ends with the flag",
+		body: "Capture the enemy Flag, or move your own Flag to the far edge. The Flag beats only the other Flag, so guard it with lies.",
+		visual: <FlagDiagram />,
+	},
+];
+
+export function TutorialModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 	const [step, setStep] = useState(0);
-	const steps = [
-		{
-			title: "Deploy in secret",
-			body: "Each side fields 21 pieces across 15 ranks. Place them anywhere on your three back rows. Your opponent sees only the backs of your pieces, and you see only theirs.",
-			visual: <SetupRows />,
-		},
-		{
-			title: "One square at a time",
-			body: "Every piece moves exactly one square forward, backward, or sideways. No jumps, no charges, no diagonals. Turns strictly alternate.",
-			visual: <MoveDiagram />,
-		},
-		{
-			title: "Judged in silence",
-			body: "Move onto an occupied enemy square to challenge it. The arbiter compares hidden ranks and removes the loser. Equal ranks both fall.",
-			visual: <ArbiterDiagram />,
-		},
-		{
-			title: "The food chain has traps",
-			body: "Higher rank wins most battles. The Spy kills every officer, but the Private is the only piece that can kill a Spy.",
-			visual: <RankTrapDiagram />,
-		},
-		{
-			title: "It all ends with the flag",
-			body: "Capture the enemy Flag, or move your own Flag to the far edge. The Flag beats only the other Flag, so guard it with lies.",
-			visual: <FlagDiagram />,
-		},
-	];
-	const current = steps[step];
+	const last = tutorialSteps.length - 1;
+	const current = tutorialSteps[step];
+
+	// Start from the top every time it opens, and let the arrow keys page it.
+	useEffect(() => {
+		if (!open) return;
+		setStep(0);
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key === "ArrowRight") setStep((value) => Math.min(last, value + 1));
+			if (event.key === "ArrowLeft") setStep((value) => Math.max(0, value - 1));
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [open, last]);
 
 	return (
-		<Modal title="Field Manual" onClose={onClose}>
-			<p className="mb-5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-muted)]">
-				Step <span className="tabular-nums text-[var(--foreground)]">{step + 1}</span> of {steps.length}
-			</p>
-			<div className="rounded-[8px] border border-[#1c2740] bg-[#0b101b] p-5">{current.visual}</div>
-			<h3 className="mt-5 font-display text-3xl font-bold uppercase text-[#ede8da]">{current.title}</h3>
-			<p className="mt-3 text-sm leading-7 text-[#aeb5c4]">{current.body}</p>
-			<div className="mt-6 flex items-center justify-between gap-3 border-t border-[#1c2740] pt-5">
-				<Button variant="outline" size="sm" disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))}>
-					Back
-				</Button>
-				<div className="flex gap-2">
-					{steps.map((item, index) => (
-						<span
-							key={item.title}
-							className={`h-2 rounded-full transition-all ${index === step ? "w-6 bg-[var(--accent)]" : "w-2 bg-[#2c3a55]"}`}
-						/>
-					))}
+		<Sheet
+			open={open}
+			onClose={onClose}
+			title="Field manual"
+			description={`Step ${step + 1} of ${tutorialSteps.length} · five rules, one minute`}
+			size="lg"
+			footer={
+				<div className="flex items-center justify-between gap-3">
+					<Button variant="outline" size="sm" disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))}>
+						Back
+					</Button>
+					<div className="flex gap-1.5">
+						{tutorialSteps.map((item, index) => (
+							<button
+								key={item.title}
+								type="button"
+								aria-current={index === step ? "step" : undefined}
+								aria-label={`Step ${index + 1}: ${item.title}`}
+								onClick={() => setStep(index)}
+								className="flex h-6 items-center"
+							>
+								<span
+									className={cn(
+										"block h-1.5 rounded-full transition-all duration-200",
+										index === step ? "w-6 bg-[var(--foreground)]" : "w-1.5 bg-[var(--line-strong)] hover:bg-[var(--ink-faint)]",
+									)}
+								/>
+							</button>
+						))}
+					</div>
+					{step === last ? (
+						<Button size="sm" asChild>
+							<Link href="/play?mode=bot">Try it on the computer</Link>
+						</Button>
+					) : (
+						<Button size="sm" onClick={() => setStep((value) => value + 1)}>
+							Next
+						</Button>
+					)}
 				</div>
-				<Button
-					size="sm"
-					onClick={() => {
-						if (step === steps.length - 1) onClose();
-						else setStep((value) => value + 1);
-					}}
-				>
-					{step === steps.length - 1 ? "To the front" : "Next"}
-				</Button>
-			</div>
-		</Modal>
+			}
+		>
+			<div className="flex min-h-[184px] items-center justify-center border border-[var(--line)] bg-[var(--panel)] p-5">{current.visual}</div>
+			<h3 key={current.title} className="gog-say mt-5 font-display text-3xl font-bold uppercase leading-none">
+				{current.title}
+			</h3>
+			<p className="mt-3 max-w-[60ch] text-[15px] leading-7 text-[var(--ink-muted)]">{current.body}</p>
+		</Sheet>
 	);
 }
 
 function SetupRows() {
+	// A real starting formation, not a drawing of one.
+	const rows = formations[0].rows;
 	return (
-		<div className="flex flex-col items-center gap-4">
+		<div className="flex flex-col items-center gap-3">
 			<div className="grid grid-cols-9 gap-1">
-				{Array.from({ length: 27 }).map((_, index) => (
-					<div
-						key={index}
-						className={`h-7 w-7 rounded-[4px] border ${
-							[2, 7, 11, 15, 21, 25].includes(index)
-								? "border-[#2c3a55] bg-[#121b2c]"
-								: "border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a]"
-						}`}
-					/>
+				{rows.flat().map((rank, index) => (
+					<div key={index} className="h-7 w-7 border border-[var(--board-border)] bg-[var(--board-dark)] sm:h-9 sm:w-9">
+						{rank ? <Piece rank={rank} side="you" /> : null}
+					</div>
 				))}
 			</div>
-			<div className="text-center font-mono text-[9px] uppercase tracking-[0.2em] text-[#5b647a]">
-				Your three back rows · arrange them any way you like
-			</div>
+			<p className="text-center font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ink-faint)]">Your three rows · any arrangement</p>
 		</div>
 	);
 }
 
 function MoveDiagram() {
+	const arrows: Record<number, string> = { 1: "", 3: "-rotate-90", 5: "rotate-90", 7: "rotate-180" };
 	return (
-		<div className="mx-auto grid w-max grid-cols-3 gap-1">
-			{["", "↑", "", "←", "∧∧∧", "→", "", "↓", ""].map((label, index) => (
+		<div className="grid grid-cols-3 gap-1">
+			{Array.from({ length: 9 }).map((_, index) => (
 				<div
 					key={index}
-					className={`flex h-12 w-12 items-center justify-center rounded-[4px] border ${
-						label === "∧∧∧"
-							? "border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] text-[#0e1420]/75"
-							: label
-								? "border-[rgba(201,168,93,0.55)] bg-[rgba(201,168,93,0.14)] text-[var(--accent)]"
-								: "border-[#1c2740] bg-[#121b2c]"
-					}`}
+					className={cn(
+						"flex h-12 w-12 items-center justify-center border",
+						index in arrows ? "border-[var(--line-strong)] bg-[var(--board-light)] text-[var(--foreground)]" : "border-[var(--board-border)] bg-[var(--board-dark)]",
+					)}
 				>
-					{label}
+					{index === 4 ? <Piece rank="SGT" side="you" scale="tray" /> : null}
+					{index in arrows ? <IconArrowUp size={18} className={arrows[index]} /> : null}
 				</div>
 			))}
 		</div>
@@ -175,14 +181,14 @@ function MoveDiagram() {
 function ArbiterDiagram() {
 	return (
 		<div className="flex flex-col items-center gap-3">
-			<div className="wr-arbiter-live rounded-[4px] border border-[var(--accent)] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--accent)]">
+			<span className="wr-arbiter-live border border-[var(--accent)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--accent)]">
 				Arbiter
-			</div>
-			<div className="relative h-20 w-20">
-				<div className="absolute inset-0 rounded-[6px] border border-[#2c3a55] bg-gradient-to-br from-[#253352] to-[#1a2338]" />
-				<div className="absolute inset-0 flex -translate-x-3 -translate-y-4 -rotate-3 items-center justify-center rounded-[6px] border border-[#dabb74] bg-gradient-to-br from-[#c9a85d] to-[#a8894a] font-bold text-[#0e1420]/75 shadow-[0_14px_30px_rgba(0,0,0,0.5)]">
-					▲▲
-				</div>
+			</span>
+			<div className="relative h-16 w-16">
+				<Piece side="foe" className="absolute inset-0 h-full w-full" />
+				<span className="absolute inset-0 -translate-x-3 -translate-y-3 -rotate-3 shadow-[var(--e2)]">
+					<Piece rank="LTC" side="you" />
+				</span>
 			</div>
 		</div>
 	);
@@ -191,19 +197,17 @@ function ArbiterDiagram() {
 function RankTrapDiagram() {
 	return (
 		<div className="grid gap-3">
-			{[
-				["◉", "kills", "★★★★★", "every officer"],
-				["∧", "kills", "◉", "only the private"],
-			].map(([left, verb, right, label]) => (
-				<div key={label} className="flex items-center justify-center gap-3">
-					<div className="flex h-12 w-12 items-center justify-center rounded-[6px] border border-[#dabb74] bg-[#c9a85d] font-bold text-[#0e1420]/75">
-						{left}
-					</div>
-					<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#8a93a8]">{verb}</span>
-					<div className="flex h-12 w-12 items-center justify-center rounded-[6px] border border-[#2c3a55] bg-[#1a2338] text-[10px] font-bold text-[var(--accent)]">
-						{right}
-					</div>
-					<span className="hidden font-mono text-[10px] uppercase text-[#5b647a] sm:inline">{label}</span>
+			{(
+				[
+					["SPY", "G5", "kills every officer"],
+					["PVT", "SPY", "is the only piece that kills a Spy"],
+				] as const
+			).map(([left, right, label]) => (
+				<div key={label} className="flex items-center gap-3">
+					<Piece rank={left} side="you" scale="tray" />
+					<span aria-hidden className="font-mono text-sm text-[var(--live)]">&gt;</span>
+					<Piece rank={right} side="you" scale="tray" />
+					<span className="hidden max-w-[16ch] text-sm leading-snug text-[var(--ink-muted)] sm:inline">{label}</span>
 				</div>
 			))}
 		</div>
@@ -212,51 +216,62 @@ function RankTrapDiagram() {
 
 function FlagDiagram() {
 	return (
-		<div className="flex items-center justify-center gap-1">
-			{["⚑", "→", "→", "→", "⚑"].map((label, index) => (
-				<div
-					key={index}
-					className={`flex h-11 w-11 items-center justify-center rounded-[5px] border ${
-						index === 0
-							? "border-[#dabb74] bg-[#c9a85d] text-[#0e1420]/75"
-							: index === 4
-								? "border-dashed border-[var(--accent)] bg-[rgba(201,168,93,0.1)] text-[var(--accent)]"
-								: "border-[#2c3a55] bg-[#121b2c] text-[#44506b]"
-					}`}
-				>
-					{label}
-				</div>
+		<div className="flex items-center justify-center gap-1.5">
+			<Piece rank="FLG" side="you" scale="tray" />
+			{[0, 1, 2].map((index) => (
+				<span key={index} className="flex h-11 w-9 items-center justify-center text-[var(--ink-faint)]">
+					<IconArrowRight size={16} />
+				</span>
 			))}
+			<span className="flex h-11 w-11 items-center justify-center border border-dashed border-[var(--ink-muted)] font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--ink-muted)]">
+				Edge
+			</span>
 		</div>
 	);
 }
 
-function ShopModal({ onClose }: { onClose: () => void }) {
+function SetPreview({ board, piece }: { board: [string, string]; piece: string }) {
 	return (
-		<Modal title="Board sets" onClose={onClose}>
+		<div aria-hidden className="grid aspect-[4/3] grid-cols-5 grid-rows-4 gap-[3px] border-b border-[var(--line)] bg-[var(--bg-sunken)] p-3">
+			{Array.from({ length: 20 }).map((_, index) => {
+				const row = Math.floor(index / 5);
+				const light = (row + (index % 5)) % 2 === 0;
+				return (
+					<span key={index} className="relative" style={{ background: light ? board[0] : board[1] }}>
+						{row >= 2 && index % 5 !== 2 ? <span className="absolute inset-[14%]" style={{ background: piece }} /> : null}
+						{row === 0 && index % 2 === 1 ? <span className="absolute inset-[14%] bg-[var(--slate-piece)]" /> : null}
+					</span>
+				);
+			})}
+		</div>
+	);
+}
+
+function ShopSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+	return (
+		<Sheet open={open} onClose={onClose} title="Board sets" description="Previews of what is being made. Nothing is for sale yet." size="lg">
 			<p className="max-w-prose text-[15px] leading-7 text-[var(--ink-muted)]">
-				Nothing is for sale yet — these are the board and piece sets being worked on. When they do arrive they will
-				only ever change how the game looks. No set will touch a rating, a clock, or what you can see of your
-				opponent&apos;s army.
+				When they arrive they will only ever change how the game looks. No set will touch a rating, a clock, or what
+				you can see of your opponent&apos;s army.
 			</p>
 
-			<ul className="mt-6 grid gap-3 md:grid-cols-3">
-				{shopItems.map(([name, body, rarity]) => (
-					<li key={name} className="overflow-hidden border border-[var(--line)] bg-[var(--panel)]">
-						<div className="aspect-[4/3] border-b border-[var(--line)] bg-[radial-gradient(circle_at_30%_20%,rgba(201,168,93,0.26),transparent_34%),linear-gradient(135deg,#1a2338,#0b101b)]" />
+			<ul className="mt-5 grid gap-3 sm:grid-cols-3">
+				{shopItems.map((item) => (
+					<li key={item.name} className="overflow-hidden border border-[var(--line)] bg-[var(--panel)]">
+						<SetPreview board={item.board} piece={item.piece} />
 						<div className="p-4">
-							<h3 className="font-display text-xl font-semibold uppercase leading-tight">{name}</h3>
-							<p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">{body}</p>
-							<p className="mt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ink-faint)]">{rarity} · in progress</p>
+							<h3 className="font-display text-xl font-semibold uppercase leading-tight">{item.name}</h3>
+							<p className="mt-1.5 text-sm leading-6 text-[var(--ink-muted)]">{item.body}</p>
+							<p className="mt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ink-faint)]">{item.rarity} · in progress</p>
 						</div>
 					</li>
 				))}
 			</ul>
 
-			<p className="mt-6 border-t border-[var(--line)] pt-4 text-sm text-[var(--ink-muted)]">
+			<p className="mt-5 border-t border-[var(--line)] pt-4 text-sm text-[var(--ink-muted)]">
 				Every mode is free and needs no account. That is not changing.
 			</p>
-		</Modal>
+		</Sheet>
 	);
 }
 
@@ -265,58 +280,44 @@ export function HomeExperience() {
 
 	return (
 		<main className="min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)]">
-			<header className="sticky top-0 z-50 flex h-[60px] items-center justify-between gap-4 border-b border-[#1c2740] bg-[#0e1420]/90 px-5 backdrop-blur md:px-12">
-				<a href="#" className="flex min-w-0 items-center gap-2.5">
-					<span className="text-[var(--accent)]">★</span>
-					<span className="font-display text-lg font-bold uppercase tracking-[0.07em] md:hidden">GoG Online</span>
-					<span className="hidden truncate font-display text-xl font-bold uppercase tracking-[0.07em] md:inline">Game of the Generals</span>
-				</a>
-				<nav className="flex items-center gap-2 md:gap-4">
-					<Button variant="ghost" size="sm" className="hidden md:inline-flex" asChild>
-						<Link href="/about">About</Link>
-					</Button>
-					<Button variant="ghost" size="sm" onClick={() => setModal("shop")}>
-						Shop
-					</Button>
-					<Button variant="outline" size="sm" className="hidden sm:inline-flex">
-						Sign in
-					</Button>
-					<Button size="sm" asChild>
-						<Link href="/play">Play</Link>
-					</Button>
-				</nav>
-			</header>
+			<SiteHeader>
+				<Button variant="ghost" size="sm" className="px-2.5 sm:px-3" onClick={() => setModal("shop")}>
+					Shop
+				</Button>
+			</SiteHeader>
 
-			<section className="relative flex min-h-[calc(100dvh-60px)] items-center justify-center overflow-hidden border-b border-[#1c2740]">
+			<section className="relative flex min-h-[min(calc(100dvh-56px),700px)] items-center sm:min-h-[calc(100dvh-56px)] justify-center overflow-hidden border-b border-[var(--line)]">
 				<WarBoard />
-				<div className="absolute inset-0 bg-[radial-gradient(ellipse_72%_64%_at_50%_50%,rgba(14,20,32,0)_32%,#0e1420_84%)]" />
-				<div className="absolute inset-0 bg-[radial-gradient(ellipse_56%_50%_at_50%_47%,rgba(14,20,32,0.78),rgba(14,20,32,0.46)_55%,rgba(14,20,32,0)_82%)]" />
+				{/* Scrims and copy let clicks fall through, so the live board stays playable around the title. */}
+				<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_72%_64%_at_50%_50%,rgba(14,20,32,0)_32%,#0e1420_84%)]" />
+				<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_56%_50%_at_50%_47%,rgba(14,20,32,0.78),rgba(14,20,32,0.46)_55%,rgba(14,20,32,0)_82%)]" />
+				{/* Phones stack the board directly under the buttons; darken that band so labels stay legible. */}
+				<div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(14,20,32,0.05)_25%,rgba(14,20,32,0.7)_58%,rgba(14,20,32,0.92)_80%)] sm:hidden" />
 
-				<div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 px-5 py-20 text-center">
-					<div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-[var(--accent)] drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
-						<span className="h-px w-8 bg-[var(--accent)]/60" />
-						<span>Salpakan · Filipino strategy classic · Est. 1970</span>
-						<span className="h-px w-8 bg-[var(--accent)]/60" />
-					</div>
-					<h1 className="font-display text-[clamp(54px,8.2vw,130px)] font-extrabold uppercase leading-[0.92] tracking-normal text-[#ede8da] drop-shadow-[0_18px_50px_rgba(0,0,0,0.95)]">
-						<span className="mb-2 block text-[0.32em] font-bold tracking-[0.34em] text-[#c7cbd6]">Game of the</span>
-						Generals
-						<br />
-						<span className="text-[var(--accent)]">Online</span>
-					</h1>
-					<p className="max-w-xl text-[clamp(15px,1.7vw,19px)] leading-8 text-[#d8d2c4] drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]">
-						Chess with a poker face. May the best liar win.
-					</p>
-					<div className="flex flex-wrap justify-center gap-3">
-						<Button size="lg" asChild>
-							<Link href="/play">Deploy as guest</Link>
-						</Button>
-						<Button variant="outline" size="lg" onClick={() => setModal("tutorial")}>
-							Quick tutorial
-						</Button>
-						<Button variant="ghost" size="lg" asChild>
-							<Link href="/how-to-play">Full rules</Link>
-						</Button>
+				<div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center px-5 pb-16 pt-12 text-center">
+					<div className="pointer-events-auto flex flex-col items-center gap-6">
+						<h1 className="font-display text-[clamp(54px,8.2vw,130px)] font-extrabold uppercase leading-[0.92] text-[var(--foreground)] drop-shadow-[0_18px_50px_rgba(0,0,0,0.95)]">
+							<span className="mb-2 block text-[0.32em] font-bold tracking-[0.34em] text-[#c7cbd6]">Game of the</span>
+							Generals
+							<br />
+							<span className="text-[var(--accent)]">Online</span>
+						</h1>
+						<p className="max-w-md text-balance text-[clamp(15px,1.7vw,19px)] leading-7 text-[#d8d2c4] drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] sm:leading-8">
+							Salpakan, the Filipino strategy classic. Chess with a poker face — may the best liar win.
+						</p>
+						<div className="flex w-full max-w-[22rem] flex-col gap-2.5 sm:w-auto sm:max-w-none sm:flex-row sm:justify-center">
+							<Button size="lg" asChild>
+								<Link href="/play">Deploy as guest</Link>
+							</Button>
+							<div className="grid grid-cols-2 gap-2.5 sm:flex">
+								<Button variant="outline" size="lg" className="px-3 sm:px-7" onClick={() => setModal("tutorial")}>
+									Quick tutorial
+								</Button>
+								<Button variant="outline" size="lg" className="px-3 sm:px-7" asChild>
+									<Link href="/how-to-play">Full rules</Link>
+								</Button>
+							</div>
+						</div>
 					</div>
 				</div>
 			</section>
@@ -324,30 +325,28 @@ export function HomeExperience() {
 			<section id="command" className="border-t border-[var(--line)] bg-[var(--panel)]">
 				<div className="mx-auto max-w-6xl px-5 py-20 md:px-12 md:py-28">
 					<div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
-						<h2 className="max-w-[16ch] font-display text-[clamp(36px,5vw,64px)] font-extrabold uppercase leading-[0.92]">
+						<h2 className="max-w-[16ch] text-balance font-display text-[clamp(36px,5vw,64px)] font-extrabold uppercase leading-[0.92]">
 							Fifteen ranks. Two break the order.
 						</h2>
 						<p className="pb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-faint)]">21 pieces per side</p>
 					</div>
 
-					<ol className="mt-10 grid gap-x-10 border-t border-[var(--line-strong)] sm:grid-cols-2 lg:grid-cols-3">
+					{/* Two columns even on a phone: fifteen full-width rows was a screen and a half of scrolling. */}
+					<ol className="mt-10 grid grid-cols-2 gap-x-4 border-t border-[var(--line-strong)] sm:gap-x-10 lg:grid-cols-3">
 						{ladder.map((rank, index) => (
-							<li
-								key={rank.key}
-								className="flex items-center gap-3 border-b border-[var(--line)] py-2.5"
-							>
-								<span className="w-5 flex-none font-mono text-[10px] tabular-nums text-[var(--ink-faint)]">
+							<li key={rank.key} className="flex min-w-0 items-center gap-2.5 border-b border-[var(--line)] py-2.5 sm:gap-3">
+								<span className="hidden w-5 flex-none font-mono text-[10px] tabular-nums text-[var(--ink-faint)] sm:block">
 									{String(index + 1).padStart(2, "0")}
 								</span>
 								<Piece rank={rank.key} side="you" scale="card" className="flex-none" />
-								<span className="min-w-0 flex-1 truncate text-sm text-[#ede8da]">{rank.name}</span>
+								<span className="min-w-0 flex-1 truncate text-[13px] text-[var(--foreground)] sm:text-sm">{rank.name}</span>
 								<span className="flex-none font-mono text-[11px] tabular-nums text-[var(--ink-muted)]">×{rank.count}</span>
 							</li>
 						))}
 					</ol>
 
-					<div className="mt-10 grid gap-x-10 gap-y-4 sm:grid-cols-2">
-						<p className="text-[15px] leading-7 text-[#c3beb2]">
+					<div className="mt-10 grid gap-x-10 gap-y-5 sm:grid-cols-2">
+						<p className="max-w-[46ch] text-[15px] leading-7 text-[#c3beb2]">
 							Higher rank wins. Equal ranks kill each other. Everything above obeys that — and then two pieces
 							refuse to.
 						</p>
@@ -362,21 +361,23 @@ export function HomeExperience() {
 			<section id="deploy" className="mx-auto max-w-6xl px-5 py-20 md:px-12 md:py-28">
 				<h2 className="font-display text-[clamp(36px,5vw,64px)] font-extrabold uppercase leading-none">Choose your front.</h2>
 				<ul className="mt-10 border-t border-[var(--line-strong)]">
-					{playModes.map(([title, body, tag]) => (
-						<li key={title} className="border-b border-[var(--line)]">
+					{playModes.map((mode) => (
+						<li key={mode.title} className="border-b border-[var(--line)]">
 							<Link
-								href="/play"
-								className="group flex flex-col gap-2 py-6 transition-colors hover:bg-[var(--panel)] md:flex-row md:items-baseline md:gap-8 md:px-3"
+								href={mode.href}
+								className="group flex items-center gap-4 py-6 transition-colors hover:bg-[var(--panel)] md:gap-8 md:px-3"
 							>
-								<span className="font-display text-[clamp(26px,3.2vw,38px)] font-bold uppercase leading-none md:w-[9ch] md:flex-none">
-									{title}
-								</span>
-								<span className="flex-1 text-[15px] leading-7 text-[#c3beb2]">{body}</span>
-								<span className="flex flex-none items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-faint)]">
-									{tag}
-									<span aria-hidden className="transition-transform group-hover:translate-x-1 text-[var(--ink-muted)]">
-										&rarr;
+								<span className="flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-baseline md:gap-8">
+									<span className="font-display text-[clamp(26px,3.2vw,38px)] font-bold uppercase leading-none md:w-[12.5ch] md:flex-none md:whitespace-nowrap">
+										{mode.title}
 									</span>
+									<span className="flex-1 text-[15px] leading-7 text-[#c3beb2]">{mode.body}</span>
+									<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-faint)] md:w-28 md:flex-none md:whitespace-nowrap md:text-right">
+										{mode.tag}
+									</span>
+								</span>
+								<span className="flex h-10 w-10 flex-none items-center justify-center border border-[var(--line-strong)] text-[var(--ink-muted)] transition-colors group-hover:border-[var(--ink-muted)] group-hover:text-[var(--foreground)]">
+									<IconArrowRight size={18} className="transition-transform duration-200 group-hover:translate-x-0.5" />
 								</span>
 							</Link>
 						</li>
@@ -384,24 +385,24 @@ export function HomeExperience() {
 				</ul>
 			</section>
 
-			<footer className="border-t border-[#1c2740] bg-[#0b101b]">
+			<section className="border-t border-[var(--line)] bg-[var(--panel)]">
 				<div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-5 py-16 md:flex-row md:items-center md:justify-between md:px-12">
 					<h2 className="font-display text-[clamp(44px,7vw,96px)] font-extrabold uppercase leading-[0.95]">
 						Your move,
 						<br />
 						<span className="text-[var(--accent)]">General.</span>
 					</h2>
-					<div className="flex flex-col gap-3">
+					<div className="flex w-full flex-col gap-3 sm:w-auto">
 						<Button size="lg" asChild>
 							<Link href="/play">Deploy as guest. It&apos;s free</Link>
 						</Button>
-						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#5b647a]">No account · No download · 10 minutes a match</p>
+						<p className="text-balance font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-faint)]">No account · No download · 10 minutes a match</p>
 					</div>
 				</div>
-			</footer>
+			</section>
 
-			{modal === "tutorial" ? <TutorialModal onClose={() => setModal(null)} /> : null}
-			{modal === "shop" ? <ShopModal onClose={() => setModal(null)} /> : null}
+			<TutorialModal open={modal === "tutorial"} onClose={() => setModal(null)} />
+			<ShopSheet open={modal === "shop"} onClose={() => setModal(null)} />
 			<SiteFooter />
 		</main>
 	);

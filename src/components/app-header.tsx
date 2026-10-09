@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,7 +12,7 @@ export function AppHeader({ children, className }: { children?: ReactNode; class
 	return (
 		<header
 			className={cn(
-				"sticky top-0 z-50 flex h-[56px] flex-none items-center justify-between gap-4 border-b border-[var(--line)] bg-[var(--background)]/92 px-4 backdrop-blur md:px-6",
+				"sticky top-0 z-50 flex h-[56px] flex-none items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--background)]/92 px-4 backdrop-blur md:px-6",
 				className,
 			)}
 		>
@@ -24,6 +25,46 @@ export function AppHeader({ children, className }: { children?: ReactNode; class
 			</Link>
 			<div className="flex flex-none items-center gap-1.5">{children}</div>
 		</header>
+	);
+}
+
+/**
+ * The public pages (home, rules, about, 404) used to carry three different
+ * headers, so which links existed depended on where you landed. This is the one
+ * set: the rules, the studio, and the way into a match.
+ */
+export function SiteHeader({ current, children }: { current?: "rules" | "about"; children?: ReactNode }) {
+	return (
+		<AppHeader>
+			<nav aria-label="Site" className="flex items-center">
+				<NavLink href="/how-to-play" active={current === "rules"}>
+					<span className="sm:hidden">Rules</span>
+					<span className="hidden sm:inline">How to play</span>
+				</NavLink>
+				<NavLink href="/about" active={current === "about"} className="hidden sm:inline-flex">
+					About
+				</NavLink>
+				{children}
+			</nav>
+			<Button size="sm" asChild className="ml-1">
+				<Link href="/play">Play</Link>
+			</Button>
+		</AppHeader>
+	);
+}
+
+function NavLink({ href, active, className, children }: { href: string; active?: boolean; className?: string; children: ReactNode }) {
+	return (
+		<Button
+			variant="ghost"
+			size="sm"
+			asChild
+			className={cn("px-2.5 sm:px-3", active && "text-[var(--foreground)] underline decoration-[var(--line-strong)] underline-offset-[6px]", className)}
+		>
+			<Link href={href} aria-current={active ? "page" : undefined}>
+				{children}
+			</Link>
+		</Button>
 	);
 }
 

@@ -8,15 +8,18 @@ const buttonVariants = cva(
 	{
 		variants: {
 			variant: {
-				default: "bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[#dabb74]",
+				default: "bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--gold-hi)]",
+				// Secondary actions stay ink on hover: gold is reserved for the one primary action.
+				// The fill is near-opaque so an outline button stays legible over the live board.
 				outline:
-					"border border-[#4a5878] bg-[#0e1420]/50 text-[#c7cbd6] hover:border-[var(--accent)] hover:text-[var(--accent)]",
-				ghost: "text-[#8a93a8] hover:text-[#ede8da]",
+					"border border-[#4a5878] bg-[var(--background)]/85 text-[#c7cbd6] hover:border-[var(--ink-muted)] hover:bg-[var(--panel-raised)] hover:text-[var(--foreground)]",
+				ghost: "text-[var(--ink-muted)] hover:bg-[var(--panel-raised)]/60 hover:text-[var(--foreground)]",
 			},
 			size: {
 				default: "h-11 px-5",
 				lg: "h-13 px-7",
-				sm: "h-9 px-4 text-[11px]",
+				// Small on a mouse, but never under 40px on a touch screen.
+				sm: "h-9 px-4 text-[11px] pointer-coarse:h-10",
 			},
 		},
 		defaultVariants: {

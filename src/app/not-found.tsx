@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { AppHeader } from "@/components/app-header";
+import { SiteHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { Piece } from "@/components/game/piece";
 
 export default function NotFound() {
 	return (
 		<main className="flex min-h-[100dvh] flex-col bg-[var(--background)] text-[var(--foreground)]">
-			<AppHeader />
+			<SiteHeader />
 
 			<div className="flex flex-1 items-center px-5 py-16">
 				<div className="mx-auto w-full max-w-lg">
@@ -33,7 +33,7 @@ export default function NotFound() {
 							<Link href="/how-to-play">How to play</Link>
 						</Button>
 						<Button variant="ghost" size="lg" asChild>
-							<Link href="/">Home</Link>
+							<Link href="/">Back home</Link>
 						</Button>
 					</div>
 				</div>

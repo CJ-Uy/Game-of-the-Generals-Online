@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { battleLosers, ranks as rankTable, type RankKey } from "@/lib/game";
+import { IconClose } from "@/components/ui/icons";
 
 const COLS = 9;
 const ROWS = 8;
@@ -326,7 +327,7 @@ export function WarBoard() {
 		} · CASUALTIES ${pad(game.fallen, 2)}`;
 
 	return (
-		<div className="absolute inset-0" onClick={() => setGame((state) => ({ ...state, picker: null }))}>
+		<div aria-hidden className="absolute inset-0" onClick={() => setGame((state) => ({ ...state, picker: null }))}>
 			<div
 				className="wr-war-board absolute left-1/2 top-1/2 w-[min(94vw,1100px)] [perspective:1700px]"
 			>
@@ -358,7 +359,9 @@ export function WarBoard() {
 							<button
 								key={piece.id}
 								type="button"
-								aria-label={piece.side === "slate" ? "Mark suspected enemy piece" : `${piece.rank} piece`}
+								// A pointer toy, not a control: 42 tab stops in front of the hero's
+								// buttons would trap every keyboard user on the way to "Play".
+								tabIndex={-1}
 								onClick={(event) => {
 									if (piece.side === "slate" && piece.alive) togglePicker(event, piece.id);
 								}}
@@ -428,30 +431,46 @@ export function WarBoard() {
 											: "translateX(-50%)",
 							}}
 						>
-							{[
-								["★", "★"],
-								["◉", "◉"],
-								["∧", "∧"],
-								["⚑", "⚑"],
-								["✕", null],
-							].map(([label, value]) => (
+							{(
+								[
+									["★", "General"],
+									["◉", "Spy"],
+									["∧", "Private"],
+									["⚑", "Flag"],
+								] as const
+							).map(([mark, name]) => (
 								<button
-									key={label}
+									key={mark}
 									type="button"
-									className="flex h-[30px] w-[30px] items-center justify-center rounded-[4px] border border-[#2c3a55] bg-[#121b2c] text-[13px] text-[var(--accent)] transition-colors hover:border-[var(--accent)]"
-									onClick={() => setMark(value as Mark | null)}
+									tabIndex={-1}
+									aria-label={`Mark as ${name}`}
+									title={name}
+									className="flex h-[30px] w-[30px] items-center justify-center rounded-[4px] border border-[var(--line-strong)] bg-[var(--panel-raised)] text-[13px] text-[var(--accent)] transition-colors hover:border-[var(--accent)]"
+									onClick={() => setMark(mark)}
 								>
-									{label}
+									{mark}
 								</button>
 							))}
+							<button
+								type="button"
+								tabIndex={-1}
+								aria-label="Clear mark"
+								title="Clear"
+								className="flex h-[30px] w-[30px] items-center justify-center rounded-[4px] border border-[var(--line-strong)] bg-[var(--panel-raised)] text-[var(--ink-muted)] transition-colors hover:border-[var(--ink-muted)] hover:text-[var(--foreground)]"
+								onClick={() => setMark(null)}
+							>
+								<IconClose size={14} />
+							</button>
 						</div>
 					) : null}
 				</div>
 			</div>
 
-			<div className="absolute inset-x-0 bottom-0 z-10 flex flex-wrap justify-between gap-2 px-5 py-3 font-mono text-[9.5px] uppercase tracking-[0.22em] md:px-12">
-				<span style={{ color: game.banner ? "#c9a85d" : "#5b647a" }}>{tickerLeft}</span>
-				<span className="text-[#44506b]">Click an enemy piece to log a suspicion</span>
+			<div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-between gap-4 px-5 py-3 font-mono text-[9.5px] uppercase tracking-[0.18em] md:px-12 md:tracking-[0.22em]">
+				<span aria-live="off" className="min-w-0 truncate tabular-nums" style={{ color: game.banner ? "var(--accent)" : "var(--ink-faint)" }}>
+					{tickerLeft}
+				</span>
+				<span className="hidden flex-none text-[var(--ink-faint)] md:inline">Click an enemy piece to log a suspicion</span>
 			</div>
 		</div>
 	);

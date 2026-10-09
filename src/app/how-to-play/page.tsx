@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AppHeader } from "@/components/app-header";
+import { SiteHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { RankReference } from "@/components/game/rank-reference";
 import { SiteFooter } from "@/components/site-footer";
@@ -10,6 +10,15 @@ export const metadata: Metadata = {
 	description:
 		"The rules of Salpakan in five minutes: hidden ranks, one square a turn, an arbiter who only announces the winner, and the two pieces that break the chain of command.",
 };
+
+// The page is long; these are the stops a returning player actually looks for.
+const SECTIONS = [
+	["short-version", "The short version"],
+	["taking-a-turn", "Taking a turn"],
+	["winning", "Winning"],
+	["what-beats-what", "What beats what"],
+	["bluffing", "Bluffing"],
+] as const;
 
 const FACTS = [
 	["21 pieces each", "Fifteen ranks, arranged however you like across your own three rows."],
@@ -21,23 +30,32 @@ const FACTS = [
 export default function HowToPlayPage() {
 	return (
 		<main className="flex min-h-[100dvh] flex-col bg-[var(--background)] text-[var(--foreground)]">
-			<AppHeader>
-				<Button size="sm" asChild>
-					<Link href="/play">Play now</Link>
-				</Button>
-			</AppHeader>
+			<SiteHeader current="rules" />
 
-			<article className="mx-auto w-full max-w-3xl px-5 pb-24 pt-12 md:px-8">
+			<div className="mx-auto grid w-full max-w-6xl flex-1 gap-12 px-5 pb-24 pt-10 md:px-8 lg:grid-cols-[minmax(0,1fr)_12rem] lg:pt-12">
+			<article className="min-w-0 max-w-3xl">
 				<h1 className="font-display text-[clamp(44px,9vw,86px)] font-extrabold uppercase leading-[0.88]">
 					How to play
 				</h1>
-				<p className="mt-4 max-w-[62ch] text-[17px] leading-8 text-[#c9c3b4]">
+				<p className="mt-4 max-w-[62ch] text-[17px] leading-7 text-[#c9c3b4] sm:leading-8">
 					Game of the Generals — <em className="not-italic text-[var(--foreground)]">Salpakan</em> — was invented in
 					the Philippines in 1970. It looks like a chess variant and plays like poker: the board is fully visible, and
 					almost nothing on it is known.
 				</p>
 
-				<section className="mt-14">
+				<nav aria-label="On this page" className="mt-6 flex flex-wrap gap-2 lg:hidden">
+					{SECTIONS.map(([id, label]) => (
+						<a
+							key={id}
+							href={`#${id}`}
+							className="border border-[var(--line-strong)] px-3 py-2 text-sm text-[var(--ink-muted)] transition-colors hover:border-[var(--ink-muted)] hover:text-[var(--foreground)]"
+						>
+							{label}
+						</a>
+					))}
+				</nav>
+
+				<section id="short-version" className="mt-14 scroll-mt-20">
 					<h2 className="font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-none">The short version</h2>
 					<dl className="mt-6 border-t border-[var(--line-strong)]">
 						{FACTS.map(([term, detail]) => (
@@ -49,7 +67,7 @@ export default function HowToPlayPage() {
 					</dl>
 				</section>
 
-				<section className="mt-14">
+				<section id="taking-a-turn" className="mt-14 scroll-mt-20">
 					<h2 className="font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-none">Taking a turn</h2>
 					<p className="mt-4 max-w-[62ch] text-[15px] leading-7 text-[#c3beb2]">
 						Move one piece one square. If the square is empty you simply move there. If it holds one of their pieces,
@@ -68,7 +86,7 @@ export default function HowToPlayPage() {
 					</p>
 				</section>
 
-				<section className="mt-14">
+				<section id="winning" className="mt-14 scroll-mt-20">
 					<h2 className="font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-none">Winning</h2>
 					<p className="mt-4 max-w-[62ch] text-[15px] leading-7 text-[#c3beb2]">There are three ways a match ends.</p>
 					<ol className="mt-5 space-y-4 border-t border-[var(--line-strong)] pt-5">
@@ -96,7 +114,7 @@ export default function HowToPlayPage() {
 					</div>
 				</section>
 
-				<section className="mt-14">
+				<section id="bluffing" className="mt-14 scroll-mt-20">
 					<h2 className="font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-none">
 						Why it is not really about rank
 					</h2>
@@ -132,6 +150,28 @@ export default function HowToPlayPage() {
 					</div>
 				</section>
 			</article>
+
+			<aside className="hidden lg:block">
+				<nav aria-label="On this page" className="sticky top-24">
+					<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-faint)]">On this page</p>
+					<ul className="mt-3 border-l border-[var(--line)]">
+						{SECTIONS.map(([id, label]) => (
+							<li key={id}>
+								<a
+									href={`#${id}`}
+									className="-ml-px block border-l border-transparent py-1.5 pl-4 text-sm text-[var(--ink-muted)] transition-colors hover:border-[var(--ink-muted)] hover:text-[var(--foreground)]"
+								>
+									{label}
+								</a>
+							</li>
+						))}
+					</ul>
+					<Button variant="outline" size="sm" asChild className="mt-6 w-full">
+						<Link href="/play?mode=bot">Practise on the computer</Link>
+					</Button>
+				</nav>
+			</aside>
+			</div>
 
 			<SiteFooter />
 		</main>

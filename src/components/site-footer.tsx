@@ -10,9 +10,10 @@ const NAV: { heading: string; links: { href: string; label: string }[] }[] = [
 	{
 		heading: "Play",
 		links: [
-			{ href: "/play", label: "Start a match" },
-			{ href: "/play", label: "Play the computer" },
-			{ href: "/play", label: "Pass and play" },
+			{ href: "/play?mode=bot", label: "Vs computer" },
+			{ href: "/play?mode=local", label: "Pass & play" },
+			{ href: "/play?mode=room", label: "Private room" },
+			{ href: "/play?mode=join", label: "Join a room" },
 		],
 	},
 	{
@@ -35,14 +36,18 @@ export function SiteFooter() {
 	return (
 		<footer className="border-t border-[var(--line)] bg-[var(--panel)]">
 			<div className="mx-auto max-w-6xl px-5 py-14 md:px-12">
-				<div className="grid gap-10 sm:grid-cols-3">
+				<div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3">
 					{NAV.map((group) => (
 						<nav key={group.heading} aria-label={group.heading}>
 							<h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ink-faint)]">{group.heading}</h2>
-							<ul className="mt-3 space-y-2">
+							<ul className="mt-2">
 								{group.links.map((link) => (
 									<li key={link.label}>
-										<Link href={link.href} className="text-[15px] text-[var(--ink-muted)] transition-colors hover:text-[var(--foreground)]">
+										{/* Padded to a full touch target; the list rhythm comes from the padding. */}
+										<Link
+											href={link.href}
+											className="inline-block py-1.5 text-[15px] text-[var(--ink-muted)] transition-colors hover:text-[var(--foreground)]"
+										>
 											{link.label}
 										</Link>
 									</li>
