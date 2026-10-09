@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
-import { IconCheck, IconCopy, IconResign, IconShare } from "@/components/ui/icons";
+import { IconCheck, IconCopy, IconDraw, IconResign, IconShare } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import type { CoachLevel } from "@/lib/coach";
 
@@ -30,6 +30,9 @@ export function MatchMenu({
 	onClose,
 	onResign,
 	canResign,
+	onOfferDraw,
+	canOfferDraw,
+	drawOffered,
 	coachLevel,
 	onCoachLevel,
 	roomCode,
@@ -41,6 +44,9 @@ export function MatchMenu({
 	onClose: () => void;
 	onResign?: () => void;
 	canResign?: boolean;
+	onOfferDraw?: () => void;
+	canOfferDraw?: boolean;
+	drawOffered?: boolean;
 	coachLevel: CoachLevel;
 	onCoachLevel: (level: CoachLevel) => void;
 	roomCode?: string;
@@ -161,7 +167,20 @@ export function MatchMenu({
 
 				{onResign ? (
 					<section>
-						<h3 className="font-display text-lg font-semibold uppercase tracking-wide">Leave</h3>
+						<h3 className="font-display text-lg font-semibold uppercase tracking-wide">End the match</h3>
+						{onOfferDraw ? (
+							<>
+								<Button variant="outline" className="mt-2 w-full justify-start" disabled={!canOfferDraw} onClick={onOfferDraw}>
+									<IconDraw size={16} />
+									<span className="ml-2">{drawOffered ? "Draw offered" : "Offer a draw"}</span>
+								</Button>
+								<p className="mt-1.5 text-xs text-[var(--ink-faint)]">
+									{drawOffered
+										? "Waiting for them to answer. The offer expires on the next move."
+										: "Both of you have to agree. Nobody wins."}
+								</p>
+							</>
+						) : null}
 						<Button
 							variant="outline"
 							className="mt-2 w-full justify-start border-[var(--loss)]/45 text-[#e0a08c] hover:border-[var(--loss)] hover:bg-[var(--loss)]/10"

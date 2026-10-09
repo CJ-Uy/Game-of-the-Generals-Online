@@ -1,4 +1,4 @@
-import { addMessage, applyMove, requestRematch, resign } from "@/lib/game";
+import { addMessage, applyMove, declineDraw, offerDraw, requestRematch, resign } from "@/lib/game";
 import { findRoom, json, parseState, publicRoom, saveRoom, sideFor } from "@/lib/rooms";
 
 export async function GET(request: Request, { params }: { params: Promise<{ code: string }> }) {
@@ -17,6 +17,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
 		| { token?: string; action?: "chat"; text?: string }
 		| { token?: string; action?: "resign" }
 		| { token?: string; action?: "rematch" }
+		| { token?: string; action?: "draw" | "draw-decline" }
 		| null;
 	const { code } = await params;
 	const room = await findRoom(code);
@@ -48,7 +49,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
 					? addMessage(state, side, String(body.text ?? ""))
 					: body?.action === "resign"
 						? resign(state, side)
-						: null;
+						: body?.action === "draw"
+							? offerDraw(state, side)
+							: body?.action === "draw-decline"
+								? declineDraw(state, side)
+								: null;
 
 		if (!next) return json({ error: "Unknown room action." }, 400);
 		const updated = await saveRoom(room, next, next.outcome ? "finished" : room.status);

@@ -55,6 +55,8 @@ export type RoomState = {
 	loadouts?: { host?: unknown; guest?: unknown };
 	/** Side that has asked for a rematch; the other side accepting starts it. */
 	rematchBy?: PlayerSide | null;
+	/** Side that has offered a draw; the other side accepting ends the match. */
+	drawBy?: PlayerSide | null;
 	pieces: GamePiece[];
 	turn: PlayerSide;
 	plies: string[];
@@ -245,6 +247,8 @@ export function applyMove(state: RoomState, side: PlayerSide, pieceId: number, c
 
 	const next: RoomState = {
 		...state,
+		// Play continued, so any open draw offer is stale.
+		drawBy: null,
 		pieces,
 		turn: side === "gold" ? "slate" : "gold",
 		plies: [...state.plies, `${side === "gold" ? "G" : "S"} ${square(attacker.col, attacker.row)}${target ? "x" : "-"}${square(col, row)}`],
@@ -343,6 +347,24 @@ export function requestRematch(state: RoomState, side: PlayerSide): RematchResul
 		},
 		started: true,
 	};
+}
+
+/** Offer or accept a draw. Same handshake as a rematch: one side offers, the other accepts. */
+export function offerDraw(state: RoomState, side: PlayerSide): RoomState {
+	if (state.outcome) throw new Error("The match is already over.");
+
+	if (!state.drawBy || state.drawBy === side) {
+		if (state.drawBy === side) return state;
+		return addMessage({ ...state, drawBy: side }, "sys", `${label(side)} offers a draw.`);
+	}
+
+	const outcome: Outcome = { winner: "draw", note: "Both commanders agreed to a draw." };
+	return addMessage({ ...state, drawBy: null, outcome }, "sys", outcome.note);
+}
+
+export function declineDraw(state: RoomState, side: PlayerSide): RoomState {
+	if (!state.drawBy || state.drawBy === side) return state;
+	return addMessage({ ...state, drawBy: null }, "sys", `${label(side)} declined the draw.`);
 }
 
 export function resign(state: RoomState, side: PlayerSide): RoomState {

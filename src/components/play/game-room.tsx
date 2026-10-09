@@ -560,6 +560,10 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 	}, [outcome]);
 
 	// A rematch resets the board in place, so clear anything tied to the old match.
+	const drawPending = room?.state.drawBy ?? null;
+	const theyOfferedDraw = !!drawPending && drawPending !== room?.side;
+	const youOfferedDraw = !!drawPending && drawPending === room?.side;
+
 	const rematchPending = room?.state.rematchBy ?? null;
 	const theyWantRematch = !!rematchPending && rematchPending !== room?.side;
 	const youWantRematch = !!rematchPending && rematchPending === room?.side;
@@ -711,6 +715,28 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 							yourSide: room?.side,
 						}}
 					/>
+
+					{theyOfferedDraw && !outcome ? (
+						<div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border border-[var(--accent)] bg-[var(--accent)]/10 px-3 py-2.5">
+							<p className="min-w-0 flex-1 text-sm">
+								<span className="font-medium">{foeName}</span> offers a draw. Neither side wins.
+							</p>
+							<div className="flex flex-none gap-2">
+								<Button size="sm" onClick={() => void act({ action: "draw" })}>
+									Accept
+								</Button>
+								<Button variant="outline" size="sm" onClick={() => void act({ action: "draw-decline" })}>
+									Decline
+								</Button>
+							</div>
+						</div>
+					) : null}
+
+					{youOfferedDraw && !outcome ? (
+						<p className="mt-3 border border-[var(--line-strong)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--ink-muted)]">
+							Draw offered. It stands until they answer, or until the next move.
+						</p>
+					) : null}
 
 					{syncState === "reconnecting" ? (
 						<div className="mt-3 flex items-center gap-2.5 border border-[var(--warn)]/45 bg-[var(--warn)]/10 px-3 py-2">
@@ -1061,6 +1087,9 @@ function OnlineGameRoom({ gameId }: { gameId: string }) {
 				onClose={() => setMenuOpen(false)}
 				onResign={() => void act({ action: "resign" })}
 				canResign={room?.status === "active" && !outcome}
+				onOfferDraw={() => void act({ action: "draw" })}
+				canOfferDraw={room?.status === "active" && !outcome && !youOfferedDraw}
+				drawOffered={youOfferedDraw}
 				coachLevel={coachLevel}
 				onCoachLevel={setCoachLevel}
 				roomCode={code}
