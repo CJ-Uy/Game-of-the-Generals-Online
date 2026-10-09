@@ -1,0 +1,25 @@
+// A legal 21-piece deployment, keyed by player-zone index. Both e2e checks need
+// one to get past the "deploy all 21 pieces" guard on room create and join.
+export const fullLoadout = {
+	0: "G5-0",
+	1: "G4-0",
+	2: "G3-0",
+	3: "G2-0",
+	4: "G1-0",
+	5: "COL-0",
+	6: "LTC-0",
+	7: "MAJ-0",
+	8: "CPT-0",
+	9: "LT1-0",
+	10: "LT2-0",
+	11: "SGT-0",
+	12: "PVT-0",
+	13: "PVT-1",
+	14: "PVT-2",
+	15: "PVT-3",
+	16: "PVT-4",
+	17: "PVT-5",
+	18: "SPY-0",
+	19: "SPY-1",
+	20: "FLG-0",
+};

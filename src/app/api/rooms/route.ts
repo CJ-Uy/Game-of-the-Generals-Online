@@ -1,5 +1,5 @@
 import { gameRooms } from "@/db/schema";
-import { makeCode, makeToken, getRoomBindings, json, publicRoom } from "@/lib/rooms";
+import { makeCode, makeToken, getRoomBindings, json, publicRoom, reapStaleRooms } from "@/lib/rooms";
 import { makeWaitingState, type PlayerSide } from "@/lib/game";
 
 export async function POST(request: Request) {
@@ -9,6 +9,9 @@ export async function POST(request: Request) {
 	if (!state) return json({ error: "Deploy all 21 pieces before creating a room." }, 400);
 
 	const { db } = await getRoomBindings();
+	// Housekeeping, never the user's problem: a failed reap must not block a room.
+	await reapStaleRooms(db).catch(() => 0);
+
 	const hostToken = makeToken();
 	const now = new Date();
 
