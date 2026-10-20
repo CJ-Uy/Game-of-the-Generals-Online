@@ -133,7 +133,7 @@ export default function AboutPage() {
 					</h2>
 					<div className="mt-8 max-w-[65ch] space-y-5 text-[15px] leading-8 text-[#aeb5c4]">
 						<p>
-							Game of the Generals, known at home as <span className="text-[var(--foreground)]">Salpakan</span>, was invented in 1970 by Sofronio H. Pascual. He borrowed the ranks of the armed forces and hid them behind a simple idea: what if you knew where an army stood, but never what it was made of?
+							Game of the Generals, known at home as <span className="text-[var(--foreground)]">Salpakan</span>, was invented in 1970 by Sofronio H. Pasola Jr. He borrowed the ranks of the armed forces and hid them behind a simple idea: what if you knew where an army stood, but never what it was made of?
 						</p>
 						<p>
 							The result plays nothing like chess, where both sides see everything. Here the information itself is the battlefield. A five-star General and a lowly Private look identical to your opponent, so a Private can march forward like a threat, and a General can hide in the back like a coward. Bluff is not a tactic here. It is the whole game.
